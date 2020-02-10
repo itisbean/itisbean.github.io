@@ -3,12 +3,12 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Hexo
-subtitle: ''
-description: ''
-keywords:
-author: John Doe
-language: en
+title: 'YourMutualFriend'
+subtitle: '第二基地'
+description: '無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...'
+keywords: 'PHP, Golang, MySQL, Linux, 編程'
+author: dony
+language: zh-HK
 timezone: ''
 
 # URL
@@ -93,12 +93,19 @@ ignore:
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: landscape
+theme: next
 
+# Search 
+search:
+  path: search.xml
+  field: post
+  format: html
+  limit: 10000
+  
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  # repo: git@github.com:itisbean/itisbean.github.io.git
-  repo: https://github.com/itisbean/itisbean.github.io.git
+  repo: git@github.com:itisbean/itisbean.github.io.git
+  # repo: https://github.com/itisbean/itisbean.github.io.git
   branch: master
