@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Linux解决内存不够的利器 Swap相关介绍</title>
+    <url>/2020/02/11/Swap/</url>
+    <content><![CDATA[<!-- TOC -->
+
+<ul>
+<li><a href="#swap">Swap</a><ul>
+<li><a href="#1-交换空间swap-space">1. 交换空间（Swap space）</a></li>
+<li><a href="#2-交换分区swap-partition">2. 交换分区（Swap partition）</a></li>
+<li><a href="#3-交换文件swap-file">3. 交换文件（Swap file）</a></li>
+<li><a href="#4-性能">4. 性能</a><ul>
+<li><a href="#41-两个影响swap性能的参数">4.1. 两个影响swap性能的参数</a></li>
+<li><a href="#42-优先级">4.2. 优先级</a></li>
+<li><a href="#43-使用zswap或zram">4.3. 使用zswap或zram</a></li>
+<li><a href="#44-striping-">4.4. Striping (?)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<!-- /TOC -->
+
+<h2 id="Swap"><a href="#Swap" class="headerlink" title="Swap"></a>Swap</h2><p><u>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</u></p>
+<blockquote>
+<p>Linux divides its physical RAM (random access memory) into chunks of memory called pages. Swapping is the process whereby a page of memory is copied to the preconfigured space on the hard disk, called swap space, to free up that page of memory. The combined sizes of the physical memory and the swap space is the amount of virtual memory available.</p>
+</blockquote>
+<h3 id="1-交换空间（Swap-space）"><a href="#1-交换空间（Swap-space）" class="headerlink" title="1. 交换空间（Swap space）"></a>1. 交换空间（Swap space）</h3><ul>
+<li>交换空间可以采用==磁盘分区==或==文件==的形式。交换空间可用于两个目的，即将虚拟内存扩展到已安装的物理内存（RAM）之外（也称为“enable swap”），也可用于磁盘挂起支持（suspend-to-disk support）。</li>
+<li>启用交换是否有益取决于已安装的物理内存量以及运行所有所需程序所需的内存量。如果物理内存量小于所需的量，则启用交换是有益的。这样可以避免内存不足的情况，Linux内核的==OOM killer==机制将通过杀死进程来自动尝试释放内存。要将虚拟内存量增加到所需的数量，请添加必要的差异作为交换空间。启用交换的最大缺点是==性能较低==。</li>
+<li>检查Swap状态：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapon -s</span><br></pre></td></tr></table></figure>
+
+<p>或者</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">free -m <span class="comment">#free还指示内存是否不足，可以通过启用或增加Swap来补救。</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-交换分区（Swap-partition）"><a href="#2-交换分区（Swap-partition）" class="headerlink" title="2. 交换分区（Swap partition）"></a>2. 交换分区（Swap partition）</h3><ul>
+<li>将分区设置为Linux交换区域（<span style="color:red">注：指定分区上的所有数据将丢失</span>）：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mkswap / dev / sd xy</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>启用device进行分页：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapon /dev/sdxy</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>要在启动时启用此交换分区，添加以下内容到/etc/fstab：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">UUID=device_UUID none swap defaults 0 0 </span><br><span class="line"><span class="comment">#device_UUID是swap的UUID</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>通过systemd激活<br>systemd基于两种不同的机制激活交换分区。两者都是的可执行文件 ==/usr/lib/systemd/system-generators==。生成器在启动时运行，并创建用于安装的本机systemd单元。首先，==systemd-fstab-generator==读取fstab，生成单元（包括用于交换的单元）。第二步，==systemd-gpt-auto-generator==检查根磁盘以生成单元。它仅在GPT磁盘上运行，并且可以通过分区类型GUID识别交换分区。</li>
+<li>禁用交换</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapoff / dev / sd xy</span><br><span class="line">swapoff -a  <span class="comment">#禁用所有交换空间</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-交换文件（Swap-file）"><a href="#3-交换文件（Swap-file）" class="headerlink" title="3. 交换文件（Swap file）"></a>3. 交换文件（Swap file）</h3><p><u><em>作为创建整个分区的替代方案，交换文件提供了动态更改大小的功能，并且更容易完全删除。</em></u></p>
+<ul>
+<li>手动创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#对于Btrfs这种写时复制（copy-on-write）的文件系统</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#首先创建一个长度为零的文件</span></span><br><span class="line">truncate -s 0 /swapfile</span><br><span class="line"><span class="comment">#使用chattr对其设置 No_COW 属性</span></span><br><span class="line">chattr +C /swapfile</span><br><span class="line"><span class="comment">#禁用压缩</span></span><br><span class="line">btrfs property <span class="built_in">set</span> /swapfile compression none</span><br></pre></td></tr></table></figure>
+
+<p><span style="color:red"><em>注：自Linux内核版本5.0起，Btrfs开始支持交换文件，但有一定限制:<br>(1) 交换文件不能位于快照子卷上。正确的过程是创建一个新的子卷来放置交换文件。<br>(2) 它不支持跨多个设备的文件系统上的交换文件。</em></span></p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#使用fallocate创建一个交换文件（M = Mebibytes，G = Gibibytes）</span></span><br><span class="line">fallocate -l 512M /swapfile</span><br><span class="line"><span class="comment">#注意： Fallocate可能会导致某些文件系统（例如F2FS）出现问题。作为替代，使用dd更可靠，但更慢</span></span><br><span class="line">dd <span class="keyword">if</span>=/dev/zero of=/swapfile bs=1M count=512 status=progress</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置正确的权限（world-readable swap file是一个巨大的本地漏洞）：</span></span><br><span class="line">chmod 600 /swapfile</span><br><span class="line"></span><br><span class="line"><span class="comment">#格式化</span></span><br><span class="line">mkswap /swapfile</span><br><span class="line"></span><br><span class="line"><span class="comment">#激活</span></span><br><span class="line">swapon /swapfile</span><br><span class="line"></span><br><span class="line"><span class="comment">#编辑fstab配置，添加以下条目</span></span><br><span class="line">vim /etc/fstab</span><br><span class="line">/swapfile none swap defaults 0 0</span><br></pre></td></tr></table></figure>
+
+<p><span style="color:red"><em>注：交换文件必须由其在文件系统上的位置指定，而不是由其UUID或LABEL指定</em></span></p>
+<ul>
+<li>删除交换文件</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#先关闭</span></span><br><span class="line">swapoff /swapfile</span><br><span class="line"><span class="comment">#再删除</span></span><br><span class="line">rm -f /swapfile</span><br><span class="line"><span class="comment">#最后从/etc/fstab中删除相关条目</span></span><br><span class="line">vim /etc/fstab</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>自动创建<br><u><em>systemd-swap是一个脚本，用于从zram交换、交换文件和交换分区创建混合交换空间。它与systemd项目无关。</em></u></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#安装systemd-swap包</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/Nefelim4ag/systemd-swap.git</span><br><span class="line"><span class="built_in">cd</span> systemd-swap</span><br><span class="line">sudo make install</span><br><span class="line"><span class="comment">#设置/etc/systemd/swap.conf的交换文件分块配置</span></span><br><span class="line">swapfc_enabled=1</span><br><span class="line">? swapfc_force_preallocated=1 (如果日志一直报这个错误systemd-swap[..]: WARN: swapFC: ENOSPC，就开启)</span><br><span class="line"><span class="comment">#启动systemd-swap服务</span></span><br><span class="line">sudo service systemd-swap start</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-性能"><a href="#4-性能" class="headerlink" title="4. 性能"></a>4. 性能</h3><p><u><em>交换操作通常比直接访问RAM中的数据要慢得多。完全禁用交换以提高性能有时会导致性能下降，因为这会减少可用于VFS缓存的内存，从而导致更频繁、更昂贵的磁盘I/O。</em></u></p>
+<h4 id="4-1-两个影响swap性能的参数"><a href="#4-1-两个影响swap性能的参数" class="headerlink" title="4.1. 两个影响swap性能的参数"></a>4.1. 两个影响swap性能的参数</h4><ul>
+<li><strong>Swappiness</strong><br>swappiness sysctl参数表示内核对交换空间的偏好(或避免)。Swappiness的值可以在0到100之间，默认值是60。低值导致内核避免交换，高值导致内核尝试使用交换空间。在足够的内存上使用较低的值可以提高许多系统的响应能力。</li>
+<li><strong>VFS cache pressure</strong><br>它控制内核回收用于缓存VFS caches的内存的趋势，而不是pagecache和swap。增加这个值会增加回收VFS缓存的速度。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#检查当前swappiness|vfs_cache_pressure值（或者可以查看文件/sys/fs/cgroup/memory/memory.swappiness或/proc/sys/vm/swappiness）</span></span><br><span class="line">sysctl vm.swappiness</span><br><span class="line">sysctl vm.vfs_cache_pressure</span><br><span class="line"></span><br><span class="line"><span class="comment">#临时设置（由于/proc组织性很差，仅出于兼容性目的而保留，因此建议使用/sys代替）</span></span><br><span class="line">sysctl -w vm.swappiness=10</span><br><span class="line">sysctl -w vm.vfs_cache_pressure=50</span><br><span class="line"></span><br><span class="line"><span class="comment">#永久设置</span></span><br><span class="line">vim /etc/sysctl.d/99-swappiness.conf</span><br><span class="line">vm.swappiness=10</span><br><span class="line">vm.vfs_cache_pressure=50</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-2-优先级"><a href="#4-2-优先级" class="headerlink" title="4.2. 优先级"></a>4.2. 优先级</h4><p>如果有多个交换文件或交换分区，则应考虑为每个交换区域分配一个优先级值（0到32767）。在使用优先级较低的交换区之前，系统将使用优先级较高的交换区。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#例，有一个较快的磁盘（/dev/sda）和一个较慢的磁盘（/dev/sdb），为最快的设备上的交换区域分配更高的优先级（pri）</span></span><br><span class="line">/dev/sda1 none swap defaults,pri=100 0 0</span><br><span class="line">/dev/sdb2 none swap defaults,pri=10  0 0</span><br><span class="line"></span><br><span class="line"><span class="comment">#或通过swapon的--priority参数：</span></span><br><span class="line">swapon --priority 100 /dev/sda1</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-3-使用zswap或zram"><a href="#4-3-使用zswap或zram" class="headerlink" title="4.3. 使用zswap或zram"></a>4.3. 使用zswap或zram</h4><p>Zswap是Linux内核功能，为交换的页面提供压缩的回写缓存。这样可以提高性能并减少IO操作。ZRAM在内存中创建虚拟压缩的交换文件，以替代磁盘上的交换文件。</p>
+<h4 id="4-4-Striping"><a href="#4-4-Striping" class="headerlink" title="4.4. Striping (?)"></a>4.4. Striping (?)</h4><p>出于交换性能的原因，没有必要使用RAID。内核本身可以在多个设备上进行stripe swapping，只要在/etc/fstab文件中赋予它们相同的优先级即可。</p>
+<blockquote>
+<p>链接：<br><a href="https://wiki.archlinux.org/index.php/Swap" target="_blank" rel="noopener">https://wiki.archlinux.org/index.php/Swap</a><br><a href="https://www.linux.com/news/all-about-linux-swap-space" target="_blank" rel="noopener">https://www.linux.com/news/all-about-linux-swap-space</a></p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+        <tag>Swap</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hello World</title>
+    <url>/2020/02/09/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html" target="_blank" rel="noopener">Deployment</a></p>
+]]></content>
+  </entry>
+</search>
