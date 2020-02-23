@@ -4,27 +4,27 @@ date: 2020-02-11 01:46:38
 tags:
     - Linux
     - Swap
+    - 文档翻译
 categories:
     - Linux
 ---
+
+{% cq %} Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为{% label info@交换空间 %}）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。{% endcq %}
+
+<!-- more -->
+
 <!-- TOC -->
 
-- [Swap](#swap)
-    - [1. 交换空间（Swap space）](#1-交换空间swap-space)
-    - [2. 交换分区（Swap partition）](#2-交换分区swap-partition)
-    - [3. 交换文件（Swap file）](#3-交换文件swap-file)
-    - [4. 性能](#4-性能)
-        - [4.1. 两个影响swap性能的参数](#41-两个影响swap性能的参数)
-        - [4.2. 优先级](#42-优先级)
-        - [4.3. 使用zswap或zram](#43-使用zswap或zram)
-        - [4.4. Striping (?)](#44-striping-)
+- [1. 交换空间（Swap space）](#1-交换空间swap-space)
+- [2. 交换分区（Swap partition）](#2-交换分区swap-partition)
+- [3. 交换文件（Swap file）](#3-交换文件swap-file)
+- [4. 性能](#4-性能)
+    - [4.1. 两个影响swap性能的参数](#41-两个影响swap性能的参数)
+    - [4.2. 优先级](#42-优先级)
+    - [4.3. 使用zswap或zram](#43-使用zswap或zram)
+    - [4.4. Striping (?)](#44-striping-)
 
 <!-- /TOC -->
-
-##  Swap
-
-<u>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</u>
-> Linux divides its physical RAM (random access memory) into chunks of memory called pages. Swapping is the process whereby a page of memory is copied to the preconfigured space on the hard disk, called swap space, to free up that page of memory. The combined sizes of the physical memory and the swap space is the amount of virtual memory available.
 
 ### 1. 交换空间（Swap space）
 
