@@ -997,7 +997,7 @@ pre .javascript .function {
   border-bottom: none;
   color: #222;
   display: inline-block;
-  line-height: 1.8em;
+  line-height: 1.375em;
   padding: 0 40px;
   position: relative;
 }
@@ -1007,7 +1007,7 @@ pre .javascript .function {
 .site-title {
   display: inline-block;
   font-family: 'Lato', "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 1.8em;
+  font-size: 1.375em;
   font-weight: normal;
   line-height: 1.5;
   vertical-align: top;
@@ -1188,7 +1188,7 @@ pre .javascript .function {
 }
 .links-of-author a::before,
 .links-of-author span.exturl::before {
-  background: #ffff71;
+  background: #f62f1f;
   border-radius: 50%;
   content: ' ';
   display: inline-block;
@@ -2162,6 +2162,14 @@ ul.breadcrumb li + li:last-child {
 }
 .tag-cloud a:hover {
   color: #222 !important;
+}
+.gt-header a,
+.gt-comments a,
+.gt-popup a {
+  border-bottom: none;
+}
+.gt-container .gt-popup .gt-action.is--active::before {
+  top: 0.7em;
 }
 .search-pop-overlay {
   background: rgba(0,0,0,0.3);

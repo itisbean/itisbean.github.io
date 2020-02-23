@@ -3,10 +3,14 @@
   <entry>
     <title>Linux解决内存不够的利器 Swap相关介绍</title>
     <url>/2020/02/11/Swap/</url>
-    <content><![CDATA[<!-- TOC -->
+    <content><![CDATA[<blockquote class="blockquote-center"><p>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为<span class="label info">交换空间</span>）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</p>
+</blockquote>
+
+<a id="more"></a>
+
+<!-- TOC -->
 
 <ul>
-<li><a href="#swap">Swap</a><ul>
 <li><a href="#1-交换空间swap-space">1. 交换空间（Swap space）</a></li>
 <li><a href="#2-交换分区swap-partition">2. 交换分区（Swap partition）</a></li>
 <li><a href="#3-交换文件swap-file">3. 交换文件（Swap file）</a></li>
@@ -18,16 +22,8 @@
 </ul>
 </li>
 </ul>
-</li>
-</ul>
 <!-- /TOC -->
 
-<a id="more"></a>
-
-<h2 id="Swap"><a href="#Swap" class="headerlink" title="Swap"></a>Swap</h2><p><u>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</u></p>
-<blockquote>
-<p>Linux divides its physical RAM (random access memory) into chunks of memory called pages. Swapping is the process whereby a page of memory is copied to the preconfigured space on the hard disk, called swap space, to free up that page of memory. The combined sizes of the physical memory and the swap space is the amount of virtual memory available.</p>
-</blockquote>
 <h3 id="1-交换空间（Swap-space）"><a href="#1-交换空间（Swap-space）" class="headerlink" title="1. 交换空间（Swap space）"></a>1. 交换空间（Swap space）</h3><ul>
 <li>交换空间可以采用==磁盘分区==或==文件==的形式。交换空间可用于两个目的，即将虚拟内存扩展到已安装的物理内存（RAM）之外（也称为“enable swap”），也可用于磁盘挂起支持（suspend-to-disk support）。</li>
 <li>启用交换是否有益取决于已安装的物理内存量以及运行所有所需程序所需的内存量。如果物理内存量小于所需的量，则启用交换是有益的。这样可以避免内存不足的情况，Linux内核的==OOM killer==机制将通过杀死进程来自动尝试释放内存。要将虚拟内存量增加到所需的数量，请添加必要的差异作为交换空间。启用交换的最大缺点是==性能较低==。</li>
@@ -101,6 +97,7 @@
       <tags>
         <tag>Linux</tag>
         <tag>Swap</tag>
+        <tag>文档翻译</tag>
       </tags>
   </entry>
 </search>
