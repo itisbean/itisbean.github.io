@@ -19,34 +19,32 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
-<meta property="og:type" content="website">
-<meta property="og:title" content="YourMutualFriend">
-<meta property="og:url" content="http://yoursite.com/index.html">
+  <meta name="description" content="MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL：buffer_size相关配置">
+<meta property="og:url" content="http://yoursite.com/2020/03/01/Mysql_buffer_size/index.html">
 <meta property="og:site_name" content="YourMutualFriend">
-<meta property="og:description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
+<meta property="og:description" content="MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。">
 <meta property="og:locale" content="zh_HK">
+<meta property="article:published_time" content="2020-03-01T13:02:48.000Z">
+<meta property="article:modified_time" content="2020-03-01T13:42:36.305Z">
 <meta property="article:author" content="dony">
-<meta property="article:tag" content="PHP">
-<meta property="article:tag" content=" Golang">
-<meta property="article:tag" content=" MySQL">
-<meta property="article:tag" content=" Linux">
-<meta property="article:tag" content=" 編程">
+<meta property="article:tag" content="MySQL">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/">
+<link rel="canonical" href="http://yoursite.com/2020/03/01/Mysql_buffer_size/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome: true,
-    isPost: false
+    isHome: false,
+    isPost: true
   };
 </script>
 
-  <title>YourMutualFriend</title>
+  <title>MySQL：buffer_size相关配置 | YourMutualFriend</title>
   
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-155299131-2"></script>
     <script>
@@ -187,10 +185,10 @@
             
 
   <div class="posts-expand">
-        
+      
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-HK">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-HK">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/01/Mysql_buffer_size/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -204,8 +202,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/01/Mysql_buffer_size/" class="post-title-link" itemprop="url">MySQL：buffer_size相关配置</a>
+          MySQL：buffer_size相关配置
         </h1>
 
         <div class="post-meta">
@@ -241,117 +238,160 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/03/01/Mysql_buffer_size/#more" rel="contents">
-                閱讀全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
+        <p>MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。</p>
+<a id="more"></a>
 
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
+<p>首先查一下带buffer_size相关的配置项，如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SHOW VARIABLES LIKE &#39;%buffer_size%&#39;;</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">| Variable_name           | Value    |</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">| bulk_insert_buffer_size | 8388608  |</span><br><span class="line">| innodb_log_buffer_size  | 16777216 | </span><br><span class="line">| innodb_sort_buffer_size | 1048576  |</span><br><span class="line">| join_buffer_size        | 262144   |</span><br><span class="line">| key_buffer_size         | 8388608  |</span><br><span class="line">| myisam_sort_buffer_size | 8388608  |</span><br><span class="line">| preload_buffer_size     | 32768    |</span><br><span class="line">| read_buffer_size        | 131072   |</span><br><span class="line">| read_rnd_buffer_size    | 262144   |</span><br><span class="line">| sort_buffer_size        | 262144   |</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">10 rows in set (0.00 sec)</span><br></pre></td></tr></table></figure>
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-HK">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/11/Swap/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpeg">
-      <meta itemprop="name" content="dony">
-      <meta itemprop="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="YourMutualFriend">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/02/11/Swap/" class="post-title-link" itemprop="url">Linux解决内存不够的利器 Swap相关介绍</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">發表於</span>
-
-              <time title="創建時間：2020-02-11 01:46:38" itemprop="dateCreated datePublished" datetime="2020-02-11T01:46:38+08:00">2020-02-11</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新於</span>
-                <time title="修改時間：2020-02-23 22:58:43" itemprop="dateModified" datetime="2020-02-23T22:58:43+08:00">2020-02-23</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分類於</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <blockquote class="blockquote-center"><p>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为<span class="label info">交换空间</span>）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:100px">Variable_name</div></th>
+<th><div style="width:40px">范围</div></th>
+<th><div style="width:30px">是否动态参数</div></th>
+<th><div style="width:35px">默认值</div></th>
+<th><div style="width:35px">最小值</div></th>
+<th><div style="width:55px">最大值</div></th>
+<th><div style="width:150px">说明</div></th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>bulk_insert_buffer_size<br>(<span style="color:red">MyISAM专用</span>)</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>8MB</td>
+<td>0</td>
+<td>4GB(32 bit)<br>-(64 bit)</td>
+<td>MyISAM批量插入非空表数据时使用的高速树状缓存区大小（以每个线程为单位）</td>
+<td>-</td>
+</tr>
+<tr>
+<td>innodb_log_buffer_size<br>(<span style="color:red">InnoDB专用</span>)</td>
+<td>Global</td>
+<td>Yes</td>
+<td>16MB</td>
+<td>1MB</td>
+<td>4GB</td>
+<td>InnoDB用来写入磁盘日志文件的缓冲区的字节大小</td>
+<td>如果业务代码中比较多较大的事务处理，最好将该值调大一些，避免事务提交前频繁写入磁盘，节省磁盘I/O</td>
+</tr>
+<tr>
+<td>innodb_sort_buffer_size<br>(<span style="color:red">InnoDB专用</span>)</td>
+<td>Global</td>
+<td>No</td>
+<td>1MB</td>
+<td>64KB</td>
+<td>64MB</td>
+<td>指定在创建InnoDB索引期间用于排序数据的排序缓冲区的大小</td>
+<td>(1) 此排序区域<span class="label info">仅用于创建索引期间的合并排序</span>，而不用于以后的索引维护操作。在索引创建完成时释放缓冲区；<br>(2) 此选项的值还控制在联机DDL操作期间扩展临时日志文件以记录并发DML的数量；<br>(3) 在<span class="label info">创建索引</span>的<span class="label info">ALTER TABLE</span>或<span class="label info">CREATE TABLE</span>语句中，将分配<span class="label info">3个</span>缓冲区，每个缓冲区的大小由该选项定义。另外，将辅助指针分配给排序缓冲区中的行，以便排序可以在指针上运行(而不是在排序操作期间移动行)</td>
+</tr>
+<tr>
+<td>join_buffer_size</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>256KB</td>
+<td>128B</td>
+<td>4GB(Windows)<br>4GB(32 bit)<br>-(64 bit)</td>
+<td>用于普通索引(plain index)扫描、范围索引(range index)扫描和不使用索引执行全表扫描的联接(join)的缓冲区的最小大小</td>
+<td>(1) 每两个表之间的全联接(full join)被分配1个join buffer，如果是多个表的复杂连接，需要多个join buffer。<br>(2) <span class="label info">最好保持全局设置较小</span>，如果全局大小大于使用它的大多数查询所需的大小，那么内存分配时间会导致显著的性能下降。<br>(3) 当使用<span class="label info">块嵌套循环</span>(Block Nested-Loop)时，较大的联接缓冲区可以在第一个表中所有行中的所有必需列都存储在联接缓冲区中的情况下发挥有益的作用。<br>(4) 当使用<span class="label info">批处理密钥访问</span>(Batched Key Access)时，join_buffer_size的值定义了向存储引擎发出的每个请求中密钥的批处理大小。缓冲区越大，对联接操作的右表的顺序访问就越多，这可以显著提高性能</td>
+</tr>
+<tr>
+<td>key_buffer_size<br>(<span style="color:red">MyISAM专用</span>)</td>
+<td>Global</td>
+<td>Yes</td>
+<td>8MB</td>
+<td>8B</td>
+<td>4GB(32 bit)<br><div style="width:55px">OS_PER_PROCESS_LIMIT(64 bit)</div></td>
+<td><div style="width:150px">索引缓冲区（索引缓存），设置的最大值不要超过机器总内存的25%。可以通过<span style="font-size:0.6em">Key_reads/Key_read_requests</span>（应&lt;0.01），<span style="font-size:0.6em;">Key_writes/Key_write_requests</span>，检查索引缓冲的性能</div></td>
+<td>使用中的缓冲区比例（近似值）：<br>1 - ((Key_blocks_unused * key_cache_block_size) / key_buffer_size)</td>
+</tr>
+<tr>
+<td>myisam_sort_buffer_size<br>(<span style="color:red">MyISAM专用</span>)</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>8MB</td>
+<td>4KB</td>
+<td>4GB(32 bit)<br>-(64 bit)</td>
+<td>在REPAIR TABLE期间对MyISAM索引排序或使用CREATE INDEX或ALTER TABLE创建索引时分配的缓冲区大小</td>
+<td>-</td>
+</tr>
+<tr>
+<td>preload_buffer_size</td>
+<td>Global,<br>Session</td>
+<td>Yes</td>
+<td>32KB</td>
+<td>1KB</td>
+<td>1GB</td>
+<td>预加载索引时分配的缓冲区大小</td>
+<td>-</td>
+</tr>
+<tr>
+<td>read_buffer_size</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>128KB</td>
+<td>8200B</td>
+<td>2GB</td>
+<td>1. 对MyISAM表进行顺序扫描的每个线程都会为其扫描的每个表分配此大小（以字节为单位）的缓冲区。<br>2. 对于所有存储引擎：<br>(1) 在为ORDER BY排序行时，用于将索引缓存在临时文件（而不是临时表）中。<br>(2) 对于批量插入分区。<br>(3) 用于缓存嵌套查询的结果。</td>
+<td>该值为4kb的倍数（如果不是会四舍五入取最近的）</td>
+</tr>
+<tr>
+<td>read_rnd_buffer_size</td>
+<td>Global,<br>Session</td>
+<td>Yes</td>
+<td>256KB</td>
+<td>1B</td>
+<td>2GB</td>
+<td>该值用于从MyISAM表进行读取，并且对于任何存储引擎均用于多范围读取优化</td>
+<td>当在键排序操作之后按排序顺序从MyISAM表中读取行时，将通过此缓冲区读取这些行以避免磁盘查找（将变量设置为较大的值可以大大提高ORDER BY性能。但是这是为每个客户端分配的缓冲区，因此不应将全局变量设置为较大的值，而是仅在需要运行大型查询的那些客户端中更改会话变量）</td>
+</tr>
+<tr>
+<td>sort_buffer_size</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>256KB</td>
+<td>32KB</td>
+<td>4GB(32 bit)<br>-(64 bit)</td>
+<td>每个必须执行排序的会话都会分配此大小的缓冲区</td>
+<td>(1) 该参数是会话级的（每个session用到排序时都会分配），所以不应设置过大；<br>(2) SHOW GLOBAL STATUS时如果看到每秒有很多Sort_merge_passes，则可以考虑增加sort_buffer_size值来加快ORDER BY或GROUP BY操作，这些操作无法通过查询优化或改进的索引来改善</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>链接：<br><a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html</a><br><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html</a> </p>
 </blockquote>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/02/11/Swap/#more" rel="contents">
-                閱讀全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
+
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
+          <div class="post-tags">
+              <a href="/tags/MySQL/" rel="tag"># MySQL</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/11/Swap/" rel="prev" title="Linux解决内存不够的利器 Swap相关介绍">
+      <i class="fa fa-chevron-left"></i> Linux解决内存不够的利器 Swap相关介绍
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
       </footer>
+    
   </article>
   
   
   
 
   </div>
-
-  
-
 
 
           </div>
