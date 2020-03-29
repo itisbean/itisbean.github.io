@@ -28,8 +28,8 @@ categories:
 
 ### 1. 交换空间（Swap space）
 
-- 交换空间可以采用==磁盘分区==或==文件==的形式。交换空间可用于两个目的，即将虚拟内存扩展到已安装的物理内存（RAM）之外（也称为“enable swap”），也可用于磁盘挂起支持（suspend-to-disk support）。
-- 启用交换是否有益取决于已安装的物理内存量以及运行所有所需程序所需的内存量。如果物理内存量小于所需的量，则启用交换是有益的。这样可以避免内存不足的情况，Linux内核的==OOM killer==机制将通过杀死进程来自动尝试释放内存。要将虚拟内存量增加到所需的数量，请添加必要的差异作为交换空间。启用交换的最大缺点是==性能较低==。
+- 交换空间可以采用{% label warning@磁盘分区%}或{% label warning@文件%}的形式。交换空间可用于两个目的，即将虚拟内存扩展到已安装的物理内存（RAM）之外（也称为“enable swap”），也可用于磁盘挂起支持（suspend-to-disk support）。
+- 启用交换是否有益取决于已安装的物理内存量以及运行所有所需程序所需的内存量。如果物理内存量小于所需的量，则启用交换是有益的。这样可以避免内存不足的情况，Linux内核的{% label warning@OOM killer%}机制将通过杀死进程来自动尝试释放内存。要将虚拟内存量增加到所需的数量，请添加必要的差异作为交换空间。启用交换的最大缺点是{% label warning@性能较低%}。
 - 检查Swap状态：
 
 ```bash
@@ -44,7 +44,7 @@ free -m #free还指示内存是否不足，可以通过启用或增加Swap来补
 
 ### 2. 交换分区（Swap partition）
 
-- 将分区设置为Linux交换区域（<span style="color:red">注：指定分区上的所有数据将丢失</span>）：
+- 将分区设置为Linux交换区域（{% label danger@注：指定分区上的所有数据将丢失%}）：
 
 ```bash
 mkswap / dev / sd xy
@@ -64,7 +64,7 @@ UUID=device_UUID none swap defaults 0 0
 ```
 
 - 通过systemd激活
-systemd基于两种不同的机制激活交换分区。两者都是的可执行文件 ==/usr/lib/systemd/system-generators==。生成器在启动时运行，并创建用于安装的本机systemd单元。首先，==systemd-fstab-generator==读取fstab，生成单元（包括用于交换的单元）。第二步，==systemd-gpt-auto-generator==检查根磁盘以生成单元。它仅在GPT磁盘上运行，并且可以通过分区类型GUID识别交换分区。
+systemd基于两种不同的机制激活交换分区。两者都是的可执行文件 {% label warning@/usr/lib/systemd/system-generators%}。生成器在启动时运行，并创建用于安装的本机systemd单元。首先 {% label warning@systemd-fstab-generator%}读取fstab，生成单元（包括用于交换的单元）。第二步，{% label warning@systemd-gpt-auto-generator%}检查根磁盘以生成单元。它仅在GPT磁盘上运行，并且可以通过分区类型GUID识别交换分区。
 - 禁用交换
 
 ```bash
@@ -89,9 +89,9 @@ chattr +C /swapfile
 btrfs property set /swapfile compression none
 ```
 
-<span style="color:red">*注：自Linux内核版本5.0起，Btrfs开始支持交换文件，但有一定限制:
-(1) 交换文件不能位于快照子卷上。正确的过程是创建一个新的子卷来放置交换文件。
-(2) 它不支持跨多个设备的文件系统上的交换文件。*</span>
+<i>{% label danger@注：自Linux内核版本5.0起，Btrfs开始支持交换文件，但有一定限制:<br>
+(1) 交换文件不能位于快照子卷上。正确的过程是创建一个新的子卷来放置交换文件。<br>
+(2) 它不支持跨多个设备的文件系统上的交换文件。%}</i>
 
 ```bash
 #使用fallocate创建一个交换文件（M = Mebibytes，G = Gibibytes）
@@ -113,7 +113,7 @@ vim /etc/fstab
 /swapfile none swap defaults 0 0
 ```
 
-<span style="color:red">*注：交换文件必须由其在文件系统上的位置指定，而不是由其UUID或LABEL指定*</span>
+<i>{% label danger@注：交换文件必须由其在文件系统上的位置指定，而不是由其UUID或LABEL指定%}</i>
 
 - 删除交换文件
 
