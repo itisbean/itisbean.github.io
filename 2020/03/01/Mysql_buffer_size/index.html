@@ -27,7 +27,7 @@
 <meta property="og:description" content="MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。">
 <meta property="og:locale" content="zh_HK">
 <meta property="article:published_time" content="2020-03-01T13:02:48.000Z">
-<meta property="article:modified_time" content="2020-03-01T13:42:36.305Z">
+<meta property="article:modified_time" content="2020-03-29T16:34:05.300Z">
 <meta property="article:author" content="dony">
 <meta property="article:tag" content="MySQL">
 <meta name="twitter:card" content="summary">
@@ -211,10 +211,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">發表於</span>
-              
 
-              <time title="創建時間：2020-03-01 21:02:48 / 修改時間：21:42:36" itemprop="dateCreated datePublished" datetime="2020-03-01T21:02:48+08:00">2020-03-01</time>
+              <time title="創建時間：2020-03-01 21:02:48" itemprop="dateCreated datePublished" datetime="2020-03-01T21:02:48+08:00">2020-03-01</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新於</span>
+                <time title="修改時間：2020-03-30 00:34:05" itemprop="dateModified" datetime="2020-03-30T00:34:05+08:00">2020-03-30</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
@@ -241,7 +247,7 @@
         <p>MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。</p>
 <a id="more"></a>
 
-<p>首先查一下带buffer_size相关的配置项，如下：</p>
+<p>首先查一下带<span class="label info">buffer_size</span>相关的配置项，如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SHOW VARIABLES LIKE &#39;%buffer_size%&#39;;</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">| Variable_name           | Value    |</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">| bulk_insert_buffer_size | 8388608  |</span><br><span class="line">| innodb_log_buffer_size  | 16777216 | </span><br><span class="line">| innodb_sort_buffer_size | 1048576  |</span><br><span class="line">| join_buffer_size        | 262144   |</span><br><span class="line">| key_buffer_size         | 8388608  |</span><br><span class="line">| myisam_sort_buffer_size | 8388608  |</span><br><span class="line">| preload_buffer_size     | 32768    |</span><br><span class="line">| read_buffer_size        | 131072   |</span><br><span class="line">| read_rnd_buffer_size    | 262144   |</span><br><span class="line">| sort_buffer_size        | 262144   |</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">10 rows in set (0.00 sec)</span><br></pre></td></tr></table></figure>
 
 <table>
@@ -358,6 +364,31 @@
 <td>(1) 该参数是会话级的（每个session用到排序时都会分配），所以不应设置过大；<br>(2) SHOW GLOBAL STATUS时如果看到每秒有很多Sort_merge_passes，则可以考虑增加sort_buffer_size值来加快ORDER BY或GROUP BY操作，这些操作无法通过查询优化或改进的索引来改善</td>
 </tr>
 </tbody></table>
+<p>补充：</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:130px">Variable_name</div></th>
+<th><div style="width:30px">范围</div></th>
+<th><div style="width:30px">是否动态参数</div></th>
+<th><div style="width:35px">默认值</div></th>
+<th><div style="width:35px">最小值</div></th>
+<th><div style="width:100px">最大值</div></th>
+<th><div style="width:90px">说明</div></th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><div style="width:130px">innodb_buffer_pool_chunk_size</div></td>
+<td>Global</td>
+<td>No</td>
+<td>128M</td>
+<td>1M</td>
+<td><div style="width:100px">innodb_buffer_pool_size / innodb_buffer_pool_instances（缓冲池大小/缓冲池实例个数）</div></td>
+<td><div style="width:90px">对缓冲池分块以避免在调整缓冲池大小时复制缓冲池的全部页，这个值就是用来定义每块的大小</div></td>
+<td>(1) 初始化时如果innodb_buffer_pool_chunk_size*缓冲池实例个数比当前的缓冲池大小还大，innodb_buffer_pool_chunk_size会被调整为：缓冲池大小/缓冲池实例个数；<br>(2) ==innodb_buffer_pool_size== 一定是等于innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances的，如果修改==innodb_buffer_pool_chunk_size==配置，初始化时也会自动调整innodb_buffer_pool_size大小为innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances。（所以调整innodb_buffer_pool_chunk_size配置时需要留心对缓冲池大小的影响）；<br>(3) 为避免潜在性能问题，不要让innodb_buffer_pool_instances的值超过1000</td>
+</tr>
+</tbody></table>
 <blockquote>
 <p>链接：<br><a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html</a><br><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html</a> </p>
 </blockquote>
@@ -382,7 +413,10 @@
     <a href="/2020/02/11/Swap/" rel="prev" title="Linux解决内存不够的利器 Swap相关介绍">
       <i class="fa fa-chevron-left"></i> Linux解决内存不够的利器 Swap相关介绍
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/03/29/goquery521/" rel="next" title="Go爬虫 http code 521问题解决">
+      Go爬虫 http code 521问题解决 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -457,20 +491,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">2</span>
+          <span class="site-state-item-count">3</span>
           <span class="site-state-item-name">文章</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-count">3</span>
         <span class="site-state-item-name">分類</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-count">5</span>
         <span class="site-state-item-name">標籤</span></a>
       </div>
   </nav>
