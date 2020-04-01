@@ -1,8 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>mysql频繁重启 问题解决</title>
+    <url>/2020/04/01/Mysql_shutdown/</url>
+    <content><![CDATA[<p>最近每天晚上的定时任务都会跑失败，业务错误日志都是<span class="label danger">MySQL server has gone away</span>。去查MySQL的日志也没有对应的错误信息，只有启动日志：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">2020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting as process 10717</span><br><span class="line">2020-01-19T07:04:09.716710Z 0 [System] [MY-010229] [Server] Starting crash recovery...</span><br><span class="line">2020-01-19T07:04:09.786959Z 0 [System] [MY-010232] [Server] Crash recovery finished.</span><br></pre></td></tr></table></figure>
+
+<a id="more"></a>
+
+<p>查看内核日志（dmesg |grep mysqld），发现是内存不够用直接被kill掉了。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[5974675.178431] [32531]  1000 32531   343724   120571     343        0             0 mysqld</span><br><span class="line">[5974675.178504] Out of memory: Kill process 32531 (mysqld) score 476 or sacrifice child</span><br><span class="line">[5974675.180641] Killed process 32531 (mysqld) total-vm:1374896kB, anon-rss:482284kB, file-rss:0kB, shmem-rss:0kB</span><br></pre></td></tr></table></figure>
+
+<p>我的服务器配置如下，可见资源非常紧张，然而运行一个几乎无人访问的<a href="https://prettycrazyjoey.cn/" target="_blank" rel="noopener"><span class="label info">小网站</span></a>应该也够了。</p>
+<table>
+<thead>
+<tr>
+<th>操作系统</th>
+<th>CPU</th>
+<th>内存</th>
+<th>公网带宽</th>
+<th>硬盘</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CentOS 7.5 64位</td>
+<td>1核</td>
+<td>1GB</td>
+<td>1Mbps</td>
+<td>50GB</td>
+</tr>
+</tbody></table>
+<p>但问题还是要解决的，不然每天<i>free -m</i>提心吊胆的实在是太折磨。我最初想到的方法是调整MySQL配置和定期清理缓存，经过一番查询和亲自实践才发现最有效的办法其实是使用交换文件作为虚拟内存。总之，这里还是记录和总结一下具体的解决方法吧。</p>
+<h4 id="1-调整MySQL配置"><a href="#1-调整MySQL配置" class="headerlink" title="1. 调整MySQL配置"></a>1. 调整MySQL配置</h4><p>MySQL刚安装的时候就已经把innodb_buffer_pool_size调整到了80M，只好继续调低，目前配置64M（<strong>注意</strong>：要同时修改<span class="label primary">innodb_buffer_pool_chunk_size</span>的大小，该值和innodb_buffer_pool_size一样都是默认128M。它相当于缓冲池的最小单位，如果缓冲池总大小比该值还小，在初始化时实际上不会改变）。但感觉这应该节省不了多少内存，只好继续从别的配置项着手。有关buffer_size相关的各配置项的详细说明请参见 <a href="/2020/03/01/Mysql_buffer_size/"><span class="label info">《MySQL：buffer_size相关配置》</span></a>。</p>
+<p>实际上，以我当前的服务器条件，在修改配置上节省出更多的内存，优化的空间已经非常小，且大部分MySQL的默认配置已经是相对最优的了。所以还是应该换个思路。</p>
+<h4 id="2-使用Swap虚拟内存"><a href="#2-使用Swap虚拟内存" class="headerlink" title="2. 使用Swap虚拟内存"></a>2. 使用Swap虚拟内存</h4><p><u><em>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</em></u></p>
+<p>更详细一些的介绍可以参考这篇，<a href="/2020/02/11/Swap/"><span class="label info">Swap介绍与应用</span></a>。</p>
+<p>最快捷的方法就是安装systemd-swap来使用交换空间，这是一个用来管理swap的脚本，只要简单几步就可以将复杂的创建和配置过程搞定，如下：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 安装systemd-swap包</span></span><br><span class="line">git clone https://github.com/Nefelim4ag/systemd-swap.git</span><br><span class="line">cd systemd-swap</span><br><span class="line">sudo make install</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置/etc/systemd/swap.conf的交换文件分块配置</span></span><br><span class="line">swapfc_enabled=1</span><br><span class="line">swapfc_force_preallocated=1 (如果日志一直报这个错误systemd-swap[..]: WARN: swapFC: ENOSPC，就开启)</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 启动systemd-swap服务</span></span><br><span class="line">sudo service systemd-swap start</span><br></pre></td></tr></table></figure>
+
+<h4 id="【后记】"><a href="#【后记】" class="headerlink" title="【后记】"></a>【后记】</h4><p>在使用Swap之前基本上MySQL每天都会重启一两次，使用之后就没再发生过重启的情况了，到目前也已经将近两个月过去了，而数据也是在不断增加的，实践证明，在内存空间不是十分富裕的情况下使用Swap交换空间作为虚拟内存，是非常有效的措施。</p>
+<p>当前的内存使用情况如下：</p>
+<table>
+<thead>
+<tr>
+<th>-</th>
+<th>total</th>
+<th>used</th>
+<th>free</th>
+<th>shared</th>
+<th>buff/cache</th>
+<th>available</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mem:</td>
+<td>991</td>
+<td>533</td>
+<td>66</td>
+<td>0</td>
+<td>392</td>
+<td>278</td>
+</tr>
+<tr>
+<td>Swap:</td>
+<td>1023</td>
+<td>566</td>
+<td>457</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+]]></content>
+      <categories>
+        <category>问题解决</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+        <tag>网站开发</tag>
+        <tag>实战总结</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Go爬虫 http code 521问题解决</title>
-    <url>/2020/03/29/goquery521/</url>
+    <url>/2020/03/29/Goquery_521/</url>
     <content><![CDATA[<p>今天在帮朋友爬取好大夫网站的时候，一直被卡在请求医生个人主页上。打印错误信息发现返回的http code都是521，而直接打开网页又是正常的。对于这个状态码我并不了解，但是前功尽弃又实在不甘心，只好Google寻找答案。</p>
 <a id="more"></a>
 
@@ -55,10 +136,12 @@
 </ol>
 ]]></content>
       <categories>
-        <category>Other</category>
+        <category>问题解决</category>
       </categories>
       <tags>
-        <tag>Go goquery spider</tag>
+        <tag>Go</tag>
+        <tag>实战总结</tag>
+        <tag>网络爬虫</tag>
       </tags>
   </entry>
   <entry>
@@ -217,11 +300,12 @@
         <category>MySQL</category>
       </categories>
       <tags>
+        <tag>文档翻译</tag>
         <tag>MySQL</tag>
       </tags>
   </entry>
   <entry>
-    <title>Linux解决内存不够的利器 Swap相关介绍</title>
+    <title>Swap介绍与应用</title>
     <url>/2020/02/11/Swap/</url>
     <content><![CDATA[<blockquote class="blockquote-center"><p>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为<span class="label info">交换空间</span>）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</p>
 </blockquote>

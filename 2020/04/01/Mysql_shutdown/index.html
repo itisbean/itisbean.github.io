@@ -19,34 +19,34 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Mist","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
-<meta property="og:type" content="website">
-<meta property="og:title" content="YourMutualFriend">
-<meta property="og:url" content="http://yoursite.com/index.html">
+  <meta name="description" content="最近每天晚上的定时任务都会跑失败，业务错误日志都是MySQL server has gone away。去查MySQL的日志也没有对应的错误信息，只有启动日志： 1232020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mysql频繁重启 问题解决">
+<meta property="og:url" content="http://yoursite.com/2020/04/01/Mysql_shutdown/index.html">
 <meta property="og:site_name" content="YourMutualFriend">
-<meta property="og:description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
+<meta property="og:description" content="最近每天晚上的定时任务都会跑失败，业务错误日志都是MySQL server has gone away。去查MySQL的日志也没有对应的错误信息，只有启动日志： 1232020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting">
 <meta property="og:locale" content="zh_HK">
+<meta property="article:published_time" content="2020-03-31T18:46:01.000Z">
+<meta property="article:modified_time" content="2020-04-01T19:26:37.198Z">
 <meta property="article:author" content="dony">
-<meta property="article:tag" content="PHP">
-<meta property="article:tag" content=" Golang">
-<meta property="article:tag" content=" MySQL">
-<meta property="article:tag" content=" Linux">
-<meta property="article:tag" content=" 編程">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="网站开发">
+<meta property="article:tag" content="实战总结">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/">
+<link rel="canonical" href="http://yoursite.com/2020/04/01/Mysql_shutdown/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome: true,
-    isPost: false
+    isHome: false,
+    isPost: true
   };
 </script>
 
-  <title>YourMutualFriend</title>
+  <title>mysql频繁重启 问题解决 | YourMutualFriend</title>
   
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-155299131-2"></script>
     <script>
@@ -187,10 +187,10 @@
             
 
   <div class="posts-expand">
-        
+      
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-HK">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-HK">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/01/Mysql_shutdown/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -204,8 +204,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/04/01/Mysql_shutdown/" class="post-title-link" itemprop="url">mysql频繁重启 问题解决</a>
+          mysql频繁重启 问题解决
         </h1>
 
         <div class="post-meta">
@@ -247,284 +246,107 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>最近每天晚上的定时任务都会跑失败，业务错误日志都是<span class="label danger">MySQL server has gone away</span>。去查MySQL的日志也没有对应的错误信息，只有启动日志：</p>
+        <p>最近每天晚上的定时任务都会跑失败，业务错误日志都是<span class="label danger">MySQL server has gone away</span>。去查MySQL的日志也没有对应的错误信息，只有启动日志：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">2020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting as process 10717</span><br><span class="line">2020-01-19T07:04:09.716710Z 0 [System] [MY-010229] [Server] Starting crash recovery...</span><br><span class="line">2020-01-19T07:04:09.786959Z 0 [System] [MY-010232] [Server] Crash recovery finished.</span><br></pre></td></tr></table></figure>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/04/01/Mysql_shutdown/#more" rel="contents">
-                閱讀全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
+
+<a id="more"></a>
+
+<p>查看内核日志（dmesg |grep mysqld），发现是内存不够用直接被kill掉了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[5974675.178431] [32531]  1000 32531   343724   120571     343        0             0 mysqld</span><br><span class="line">[5974675.178504] Out of memory: Kill process 32531 (mysqld) score 476 or sacrifice child</span><br><span class="line">[5974675.180641] Killed process 32531 (mysqld) total-vm:1374896kB, anon-rss:482284kB, file-rss:0kB, shmem-rss:0kB</span><br></pre></td></tr></table></figure>
+
+<p>我的服务器配置如下，可见资源非常紧张，然而运行一个几乎无人访问的<a href="https://prettycrazyjoey.cn/" target="_blank" rel="noopener"><span class="label info">小网站</span></a>应该也够了。</p>
+<table>
+<thead>
+<tr>
+<th>操作系统</th>
+<th>CPU</th>
+<th>内存</th>
+<th>公网带宽</th>
+<th>硬盘</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CentOS 7.5 64位</td>
+<td>1核</td>
+<td>1GB</td>
+<td>1Mbps</td>
+<td>50GB</td>
+</tr>
+</tbody></table>
+<p>但问题还是要解决的，不然每天<i>free -m</i>提心吊胆的实在是太折磨。我最初想到的方法是调整MySQL配置和定期清理缓存，经过一番查询和亲自实践才发现最有效的办法其实是使用交换文件作为虚拟内存。总之，这里还是记录和总结一下具体的解决方法吧。</p>
+<h4 id="1-调整MySQL配置"><a href="#1-调整MySQL配置" class="headerlink" title="1. 调整MySQL配置"></a>1. 调整MySQL配置</h4><p>MySQL刚安装的时候就已经把innodb_buffer_pool_size调整到了80M，只好继续调低，目前配置64M（<strong>注意</strong>：要同时修改<span class="label primary">innodb_buffer_pool_chunk_size</span>的大小，该值和innodb_buffer_pool_size一样都是默认128M。它相当于缓冲池的最小单位，如果缓冲池总大小比该值还小，在初始化时实际上不会改变）。但感觉这应该节省不了多少内存，只好继续从别的配置项着手。有关buffer_size相关的各配置项的详细说明请参见 <a href="/2020/03/01/Mysql_buffer_size/"><span class="label info">《MySQL：buffer_size相关配置》</span></a>。</p>
+<p>实际上，以我当前的服务器条件，在修改配置上节省出更多的内存，优化的空间已经非常小，且大部分MySQL的默认配置已经是相对最优的了。所以还是应该换个思路。</p>
+<h4 id="2-使用Swap虚拟内存"><a href="#2-使用Swap虚拟内存" class="headerlink" title="2. 使用Swap虚拟内存"></a>2. 使用Swap虚拟内存</h4><p><u><em>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</em></u></p>
+<p>更详细一些的介绍可以参考这篇，<a href="/2020/02/11/Swap/"><span class="label info">Swap介绍与应用</span></a>。</p>
+<p>最快捷的方法就是安装systemd-swap来使用交换空间，这是一个用来管理swap的脚本，只要简单几步就可以将复杂的创建和配置过程搞定，如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 安装systemd-swap包</span></span><br><span class="line">git clone https://github.com/Nefelim4ag/systemd-swap.git</span><br><span class="line">cd systemd-swap</span><br><span class="line">sudo make install</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置/etc/systemd/swap.conf的交换文件分块配置</span></span><br><span class="line">swapfc_enabled=1</span><br><span class="line">swapfc_force_preallocated=1 (如果日志一直报这个错误systemd-swap[..]: WARN: swapFC: ENOSPC，就开启)</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 启动systemd-swap服务</span></span><br><span class="line">sudo service systemd-swap start</span><br></pre></td></tr></table></figure>
+
+<h4 id="【后记】"><a href="#【后记】" class="headerlink" title="【后记】"></a>【后记】</h4><p>在使用Swap之前基本上MySQL每天都会重启一两次，使用之后就没再发生过重启的情况了，到目前也已经将近两个月过去了，而数据也是在不断增加的，实践证明，在内存空间不是十分富裕的情况下使用Swap交换空间作为虚拟内存，是非常有效的措施。</p>
+<p>当前的内存使用情况如下：</p>
+<table>
+<thead>
+<tr>
+<th>-</th>
+<th>total</th>
+<th>used</th>
+<th>free</th>
+<th>shared</th>
+<th>buff/cache</th>
+<th>available</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mem:</td>
+<td>991</td>
+<td>533</td>
+<td>66</td>
+<td>0</td>
+<td>392</td>
+<td>278</td>
+</tr>
+<tr>
+<td>Swap:</td>
+<td>1023</td>
+<td>566</td>
+<td>457</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/%E7%BD%91%E7%AB%99%E5%BC%80%E5%8F%91/" rel="tag"># 网站开发</a>
+              <a href="/tags/%E5%AE%9E%E6%88%98%E6%80%BB%E7%BB%93/" rel="tag"># 实战总结</a>
+          </div>
 
         
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-HK">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/29/Goquery_521/">
 
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpeg">
-      <meta itemprop="name" content="dony">
-      <meta itemprop="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
-    </span>
 
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="YourMutualFriend">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/29/Goquery_521/" class="post-title-link" itemprop="url">Go爬虫 http code 521问题解决</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">發表於</span>
-
-              <time title="創建時間：2020-03-29 23:48:56" itemprop="dateCreated datePublished" datetime="2020-03-29T23:48:56+08:00">2020-03-29</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新於</span>
-                <time title="修改時間：2020-04-02 02:57:55" itemprop="dateModified" datetime="2020-04-02T02:57:55+08:00">2020-04-02</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分類於</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3/" itemprop="url" rel="index">
-                    <span itemprop="name">问题解决</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>今天在帮朋友爬取好大夫网站的时候，一直被卡在请求医生个人主页上。打印错误信息发现返回的http code都是521，而直接打开网页又是正常的。对于这个状态码我并不了解，但是前功尽弃又实在不甘心，只好Google寻找答案。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/03/29/Goquery_521/#more" rel="contents">
-                閱讀全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/29/Goquery_521/" rel="prev" title="Go爬虫 http code 521问题解决">
+      <i class="fa fa-chevron-left"></i> Go爬虫 http code 521问题解决
+    </a></div>
+      <div class="post-nav-item"></div>
     </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
       </footer>
-  </article>
-  
-  
-  
-
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-HK">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/01/Mysql_buffer_size/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpeg">
-      <meta itemprop="name" content="dony">
-      <meta itemprop="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="YourMutualFriend">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/01/Mysql_buffer_size/" class="post-title-link" itemprop="url">MySQL：buffer_size相关配置</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">發表於</span>
-
-              <time title="創建時間：2020-03-01 21:02:48" itemprop="dateCreated datePublished" datetime="2020-03-01T21:02:48+08:00">2020-03-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新於</span>
-                <time title="修改時間：2020-04-02 02:53:23" itemprop="dateModified" datetime="2020-04-02T02:53:23+08:00">2020-04-02</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分類於</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/MySQL/" itemprop="url" rel="index">
-                    <span itemprop="name">MySQL</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
     
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/03/01/Mysql_buffer_size/#more" rel="contents">
-                閱讀全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-HK">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/11/Swap/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpeg">
-      <meta itemprop="name" content="dony">
-      <meta itemprop="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="YourMutualFriend">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/02/11/Swap/" class="post-title-link" itemprop="url">Swap介绍与应用</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">發表於</span>
-
-              <time title="創建時間：2020-02-11 01:46:38" itemprop="dateCreated datePublished" datetime="2020-02-11T01:46:38+08:00">2020-02-11</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新於</span>
-                <time title="修改時間：2020-04-02 03:01:58" itemprop="dateModified" datetime="2020-04-02T03:01:58+08:00">2020-04-02</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分類於</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index">
-                    <span itemprop="name">Linux</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <blockquote class="blockquote-center"><p>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为<span class="label info">交换空间</span>）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</p>
-</blockquote>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/02/11/Swap/#more" rel="contents">
-                閱讀全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
   </article>
   
   
   
 
   </div>
-
-  
-
 
 
           </div>
@@ -575,6 +397,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-调整MySQL配置"><span class="nav-number">1.</span> <span class="nav-text">1. 调整MySQL配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-使用Swap虚拟内存"><span class="nav-number">2.</span> <span class="nav-text">2. 使用Swap虚拟内存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#【后记】"><span class="nav-number">3.</span> <span class="nav-text">【后记】</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
