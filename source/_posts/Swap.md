@@ -1,5 +1,5 @@
 ---
-title: Linux解决内存不够的利器 Swap相关介绍
+title: Swap介绍与应用
 date: 2020-02-11 01:46:38
 tags:
     - Linux

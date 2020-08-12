@@ -3,6 +3,7 @@ title: MySQL：buffer_size相关配置
 date: 2020-03-01 21:02:48
 tags:
     - MySQL
+    - 文档翻译
 categories:
     - MySQL
 ---
