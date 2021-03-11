@@ -78,6 +78,8 @@
     <content><![CDATA[<p>这篇文章用来记录一些我在工作中踩过坑的真实案例。</p>
 <span id="more"></span>
 
+<!-- TOC -->
+
 <h3 id="1-count-join-明明用到了索引，为什么还是那么慢？"><a href="#1-count-join-明明用到了索引，为什么还是那么慢？" class="headerlink" title="1. count + join 明明用到了索引，为什么还是那么慢？"></a>1. <code>count</code> + <code>join</code> 明明用到了索引，为什么还是那么慢？</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select count(*) from tb_proj_cst t1,tb_cst t2 where t1.cst_id &#x3D; t2.id and t1.proj_id&#x3D;&#39;abc&#39;;</span><br></pre></td></tr></table></figure>
 
 <ul>
