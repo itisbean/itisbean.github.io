@@ -6,7 +6,7 @@ tags:
     - 网站开发
     - 实战总结
 categories:
-    - 问题解决
+    - Coding
 ---
 
 最近每天晚上的定时任务都会跑失败，业务错误日志都是{% label danger@MySQL server has gone away%}。去查MySQL的日志也没有对应的错误信息，只有启动日志：

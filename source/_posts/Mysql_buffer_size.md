@@ -5,7 +5,7 @@ tags:
     - MySQL
     - 文档翻译
 categories:
-    - MySQL
+    - Coding
 ---
 
 MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。
