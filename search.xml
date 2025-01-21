@@ -1,0 +1,805 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Life in the UK</title>
+    <url>/2025/01/21/Life-in-uk/</url>
+    <content><![CDATA[<p>上一次更新自己的博客还是2021年，这几年的生活着实是发生了天翻地覆的变化，以至于我甚至不敢相信时间才过了短短四年。疫情似乎没有带给我时间被偷走了的错觉，它对世界的影响巨大，落在我个人身上却像根羽毛一样没有重量。</p>
+<p>这是我第一次在自己的博客里分享生活，我想我应该多写写，多记录一下。豆瓣是我的首选，毕竟没有现实中的好友，不必担心分享欲的羞耻感暴露人前。但又实在对这些社交平台不太放心，万一哪天自己的号没了岂不是一场空。所以还是用自己的博客吧，至少GitHub会帮我保存。</p>
+]]></content>
+      <categories>
+        <category>Journal</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>Google Cloud Platform 搭建http/https Proxy</title>
+    <url>/2021/12/11/Gcp_proxy/</url>
+    <content><![CDATA[<p>GCP会给新用户300刀的优惠券（一年内），所以就搞了台虚拟机实例做为备用机练习。因为平时使用命令行下载一些包需要翻墙，如果可以直接使用http_proxy就会方便很多，于是就在这台机器上配置了一下。</p>
+<span id="more"></span>
+
+<ol>
+<li><p>安装squid3</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo apt-get install squid3</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改配置 <code>sudo vim /etc/squid/squid.conf</code></p>
+ <figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 端口默认3128，可自定义</span><br><span class="line">http_port 3128 </span><br><span class="line"></span><br><span class="line"># 设置允许的ip</span><br><span class="line">acl allcomputers src 0.0.0.0&#x2F;0.0.0.0</span><br><span class="line"># 设置可验证的用户名密码</span><br><span class="line">auth_param basic program &#x2F;usr&#x2F;lib&#x2F;squid3&#x2F;basic_ncsa_auth &#x2F;etc&#x2F;squid&#x2F;passwords</span><br><span class="line">auth_param basic realm proxy</span><br><span class="line">acl authenticated proxy_auth REQUIRED</span><br><span class="line"># 允许经过验证的请求</span><br><span class="line">http_access allow authenticated allcomputers</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>设置用户名密码</p>
+<p> (1) 安装apache2-utils</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo apt-get install apache2-utils</span><br></pre></td></tr></table></figure>
+
+<p> (2) 设置用户名密码</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo htpasswd -c -d /etc/squid3/passwords &lt;自定义用户名&gt;</span><br><span class="line">`&gt; 设置密码，连输两次 &lt;`</span><br></pre></td></tr></table></figure>
+
+<p> (3) 给读+可执行权限</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo chmod o+r /etc/squid3/passwords</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动squid3 <code>sudo service squid3 start</code></p>
+</li>
+<li><p>GCP <a href="https://console.cloud.google.com/networking/firewalls/list?project=planar-airship-286116">添加防火墙规则</a></p>
+<p> <img src="https://dony-1257037510.cos.ap-chengdu.myqcloud.com/markdown/ipproxyfirewall.png" alt="image"></p>
+</li>
+<li><p>在本地验证proxy是否可用</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">export</span> http_proxy=<span class="string">&quot;http://用户名:密码@代理IP:代理端口&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p> 访问Google</p>
+ <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">curl -l <span class="string">&quot;http://www.google.com&quot;</span></span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>GCP</tag>
+        <tag>网络</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Git的webhook应用：代码push后自动构建网站</title>
+    <url>/2021/01/11/Git_hook/</url>
+    <content><![CDATA[<p>之前我的网站更新得比较频繁，而我是直接在服务器 <em>git pull</em> 来更新代码，所以每次本地开发完提交到远端后还要上服务器上去更新代码，非常麻烦。所以想到是否可以用git的webhook功能来自动拉取代码。</p>
+<span id="more"></span>
+
+<h2 id="1-Git上配置webhook"><a href="#1-Git上配置webhook" class="headerlink" title="1. Git上配置webhook"></a>1. Git上配置webhook</h2><p>如图，填写1、2的信息</p>
+<p><img src="https://dony-1257037510.cos.ap-chengdu.myqcloud.com/blog/webhook.png" alt="image"></p>
+<h2 id="2-在上面配置的URL中处理钩子请求"><a href="#2-在上面配置的URL中处理钩子请求" class="headerlink" title="2. 在上面配置的URL中处理钩子请求"></a>2. 在上面配置的URL中处理钩子请求</h2><p>我的网站是php开发，构建起来比较简单，基本上就两个步骤：</p>
+<p>(1) <code>git pull</code> 更新项目代码<br>(2) 覆盖一些配置文件</p>
+<p>处理方式也很简单，<code>获取post请求信息</code>-&gt;<code>签名校验</code>-&gt;<code>执行shell命令</code>，简略代码如下</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 1. 获取body</span></span><br><span class="line"><span class="variable">$content</span> = file_get_contents(<span class="string">&#x27;php://input&#x27;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. 签名算法</span></span><br><span class="line"><span class="variable">$secret</span> = <span class="string">&#x27;&#x27;</span>; <span class="comment">// Git上配置的secret</span></span><br><span class="line"><span class="variable">$signature</span> = <span class="string">&quot;sha1=&quot;</span> . hash_hmac(<span class="string">&#x27;sha1&#x27;</span>, <span class="variable">$content</span>, <span class="variable">$secret</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 和请求头中带的签名信息比较</span></span><br><span class="line"><span class="keyword">if</span> (strcmp(<span class="variable">$signature</span>, <span class="variable">$gitsign</span>) == <span class="number">0</span>) &#123; <span class="comment">// 签名验证成功，执行shell命令</span></span><br><span class="line">    ... <span class="comment">// shell命令</span></span><br><span class="line">&#125; </span><br></pre></td></tr></table></figure>
+
+<h2 id="3-给nginx运行用户拉取代码的权限"><a href="#3-给nginx运行用户拉取代码的权限" class="headerlink" title="3. 给nginx运行用户拉取代码的权限"></a>3. 给nginx运行用户拉取代码的权限</h2><p>假设nginx的运行用户是<code>webuser</code></p>
+<p>(1) 把<code>webuser</code>用户的ssh-key添加到 <strong>Git</strong> 中</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 用webuser登录 Generating public/private ed25519 key pair</span></span><br><span class="line">ssh-keygen -t ed25519 -C &quot;yourmail@email.com&quot;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 复制公钥 添加到Git的配置中</span> </span><br><span class="line">cd /home/apache/.ssh &amp;&amp; cat id_ed25519.pub</span><br></pre></td></tr></table></figure>
+
+<p>(2) 给<code>webuser</code>网站项目的.git文件夹的权限</p>
+<p>不然会报错：<em>error: cannot open .git/FETCH_HEAD: Permission denied</em></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /webroot &amp;&amp; chown -R webuser:webuser .git/</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>git</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Mysql实战：工作中遇到的真实案例分析</title>
+    <url>/2020/08/04/Mysql_working-problem/</url>
+    <content><![CDATA[<p>这篇文章用来记录一些我在工作中踩过坑的真实案例。</p>
+<span id="more"></span>
+
+<!-- TOC -->
+
+<h3 id="1-count-join-明明用到了索引，为什么还是那么慢？"><a href="#1-count-join-明明用到了索引，为什么还是那么慢？" class="headerlink" title="1. count + join 明明用到了索引，为什么还是那么慢？"></a>1. <code>count</code> + <code>join</code> 明明用到了索引，为什么还是那么慢？</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select count(*) from tb_proj_cst t1,tb_cst t2 where t1.cst_id &#x3D; t2.id and t1.proj_id&#x3D;&#39;abc&#39;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>为什么要这么写？<br>这个count查询场景是应用在客户列表管理中的，列表取数是需要拿到客户真实信息（也就是cst表的数据），而由于历史原因<code>t1</code>表存在一定的脏数据，如果不过滤掉，分页就会出现问题。</p>
+</li>
+<li><p>这个查询的实际执行过程是怎样的？</p>
+</li>
+</ul>
+<p>explain查看该语句执行计划对这两个表使用的join type</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Table   Join Type</span><br><span class="line">rcp      ref</span><br><span class="line">c      eq_ref</span><br></pre></td></tr></table></figure>
+
+<p><code>ref</code> 和 <code>eq_ref</code> 都是用到索引，区别是<code>eq_ref</code>用到的索引是唯一的（<code>PRIMARY KEY</code> 或 <code>UNIQUE NOT NULL index</code>）。</p>
+<blockquote>
+<p>备注：<a href="https://dev.mysql.com/doc/refman/8.0/en/explain-output.html#jointype_range">关于join type的说明</a></p>
+</blockquote>
+<p><code>t1</code> 的 <code>cst_id</code> 和 <code>proj_id</code> 都是有索引的。单看这一条语句，基本上很难再去挖掘什么优化空间。如果单执行这句</p>
+<p><code>select count(*) from tb_proj_cst where proj_id=&#39;abc&#39;;</code></p>
+<p>查询速度是非常快的，那应该就是<code>join</code>的问题。</p>
+<p>首先，我们先了解一下join的执行过程。join查询用的是<code>嵌套循环联接算法</code>（如果被驱动表上没有用到索引的情况下会使用<code>块嵌套循环联接算法</code>，比较复杂，这里先不展开了，以及MySQL 8.0.20版本后已经不再使用，改用哈希联接<a href="https://dev.mysql.com/doc/refman/8.0/en/hash-joins.html">Hash Join Optimization</a>）</p>
+<p>这个例子join使用的伪代码类似如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">for each row in t1 matching reference key &#123;</span><br><span class="line">    take out the row matching eq_ref in t2, send to client</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这样算的话，实际的扫描行数就是约等于满足条件的 t1 row*2</p>
+<p>通过追踪优化器方法，查看最终选择的执行计划和实际扫描行数是否符合猜测</p>
+<figure class="highlight json"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;table&quot;</span>: <span class="string">&quot;`tb_proj_cst` `t1`&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;pushed_index_condition&quot;</span>: <span class="string">&quot;(`t1`.`proj_id` = &#x27;abc&#x27;)&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;table_condition_attached&quot;</span>: <span class="string">&quot;(`t1`.`cst_id` is not null)&quot;</span></span><br><span class="line">&#125;,</span><br><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;table&quot;</span>: <span class="string">&quot;`tb_cst` `t2`&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>优化器选择了<code>tb_proj_cst</code>作为驱动表（t1）（因为用上了proj_id索引的条件，它相对于<code>tb_cst</code>就变成了“小表”），</p>
+<p>查询返回结果：14351，扫描行数：28703，符合猜想</p>
+<ul>
+<li>引申思考，为什么直接count的扫描行数约为join count的一半，但是查询时间却快了远不止2倍？</li>
+</ul>
+<p>猜想：count会选择最小辅助索引树来扫描，因为辅助索引树的叶子节点只带pk信息，聚集索引树的叶子节点是带上整个row data的，而无论单独count报备表还是单独count客户表，都是直接扫描辅助索引树，但是带上了join就必然会用到主键索引</p>
+<ul>
+<li>实际是怎么解决的？</li>
+</ul>
+<p>把脏数据干掉了好像</p>
+<h3 id="2-如果联表查询中多表都有同一个字段，且都有索引，where时选择哪一个呢？"><a href="#2-如果联表查询中多表都有同一个字段，且都有索引，where时选择哪一个呢？" class="headerlink" title="2. 如果联表查询中多表都有同一个字段，且都有索引，where时选择哪一个呢？"></a>2. 如果联表查询中多表都有同一个字段，且都有索引，where时选择哪一个呢？</h3><p>以下4个SQL的业务意义都是一样的，表示查出某个项目下有成交佣金的交易数量（简化了一下，实际上还有很多其他条件，所以才会用到联表）。</p>
+<p>涉及两个表： 佣金表<code>tb_brokerage</code>和交易表<code>tb_trade</code></p>
+<p>这两个表上都有项目ID<code>proj_id</code>这个字段，且都建了索引。</p>
+<p>分别执行，查看每个SQL的扫描行数。</p>
+<ul>
+<li>SQL1 佣金表为驱动表。使用<code>佣金表</code>的<code>proj_id</code>查询</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SELECT VARIABLE_VALUE INTO @a FROM INFORMATION_SCHEMA.session_status WHERE variable_name &#x3D; &#39;Innodb_rows_read&#39;;</span><br><span class="line"></span><br><span class="line">SELECT COUNT(DISTINCT trade_id) FROM &#96;tb_brokerage&#96; b</span><br><span class="line">STRAIGHT_JOIN &#96;tb_trade&#96; t ON t.id &#x3D; b.trade_id</span><br><span class="line">WHERE &#96;type&#96; &#x3D; &#39;trade&#39; AND &#96;b&#96;.&#96;proj_id&#96; &#x3D; &#39;abc&#39;;</span><br><span class="line"></span><br><span class="line">SELECT VARIABLE_VALUE INTO @b FROM INFORMATION_SCHEMA.session_status WHERE variable_name &#x3D; &#39;Innodb_rows_read&#39;;</span><br><span class="line">SELECT @b-@a;</span><br></pre></td></tr></table></figure>
+
+<p>结果：1378</p>
+<hr>
+<ul>
+<li>SQL2 佣金表为驱动表。使用<code>交易表</code>的<code>proj_id</code>查询</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SELECT COUNT(DISTINCT trade_id) FROM &#96;tb_brokerage&#96; b</span><br><span class="line">STRAIGHT_JOIN &#96;tb_trade&#96; t ON t.id &#x3D; b.trade_id</span><br><span class="line">WHERE &#96;brokerage_type&#96; &#x3D; &#39;trade&#39; AND &#96;t&#96;.&#96;proj_id&#96; &#x3D; &#39;abc&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>结果：18606</p>
+<hr>
+<ul>
+<li>SQL3：交易表为驱动表，使用<code>佣金表</code>的<code>proj_id</code>查询</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SELECT COUNT(DISTINCT trade_id) FROM &#96;tb_trade&#96; t</span><br><span class="line">STRAIGHT_JOIN &#96;tb_brokerage&#96; b ON t.id &#x3D; b.trade_id</span><br><span class="line">WHERE &#96;brokerage_type&#96; &#x3D; &#39;trade&#39; AND &#96;b&#96;.&#96;proj_id&#96; &#x3D; &#39;abc&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>结果：7846</p>
+<hr>
+<ul>
+<li>SQL4：交易表为驱动表，使用<code>交易表</code>的<code>proj_id</code>查询</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SELECT COUNT(DISTINCT trade_id) FROM &#96;tb_trade&#96; t</span><br><span class="line">STRAIGHT_JOIN &#96;tb_brokerage&#96; b ON t.id &#x3D; b.trade_id</span><br><span class="line">WHERE &#96;brokerage_type&#96; &#x3D; &#39;trade&#39; AND &#96;t&#96;.&#96;proj_id&#96; &#x3D; &#39;abc&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>结果：1386</p>
+<hr>
+<p>这4个SQL查询的结果都是一样的，但实际性能差异却差很多。最差情况是SQL2，SQL1和SQL4的结果比较相近。</p>
+<p>通过问题1的联表案例，我们基本可以达成共识的一个结论就是：联表查询时优化器会选择小表为驱动表。</p>
+<p>因为这两个表都有<code>proj_id</code>的索引，所以理论上无论<code>where</code>条件里用的是哪个表的  <code>proj_id</code>，这张表都应该自然而然成为“小表”（ref），即使它的真是数据量并不是小的。那么可能发生的情况要么是SQL1，要么是SQL4，应该都不会太差。</p>
+<p>出问题的真实SQL其实是这样的：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SELECT</span><br><span class="line">	COUNT(</span><br><span class="line">		DISTINCT trade_id</span><br><span class="line">	)</span><br><span class="line">FROM</span><br><span class="line">	&#96;tb_brokerage&#96; b</span><br><span class="line">INNER JOIN &#96;tb_trade&#96; t ON t.id &#x3D; b.trade_id</span><br><span class="line">INNER JOIN &#96;tb_cst&#96; c ON t.cst_id &#x3D; c.id</span><br><span class="line">INNER JOIN &#96;tb_broker&#96; r ON c.broker_id &#x3D; r.id</span><br><span class="line">WHERE</span><br><span class="line">	(</span><br><span class="line">        ...</span><br><span class="line">	)</span><br><span class="line">;</span><br></pre></td></tr></table></figure>
+
+<p>当我在测试环境重现这个SQL的时候，试了n次都是SQL1的效果，用上了索引（唯一区别的in条件下join type是range）,但当时这个慢SQL明明走的全表扫描。最后我把这个proj_id的条件不断扩大，当range的范围达到一定量时，优化器放弃了tb_trade的proj_id索引。这也有个前提是，交易表本身真实数量上是真正的“小表”。</p>
+<p>这个问题也很好解决，不管业务数据大表小表，既然都要这个字段的索引，那就充分利用。</p>
+<h3 id="3-InnoDB的一个重要特性就是多版本并发控制（MVCC），这是为了保证并发安全。真是业务里有没有遇到过“不安全”的并发呢？"><a href="#3-InnoDB的一个重要特性就是多版本并发控制（MVCC），这是为了保证并发安全。真是业务里有没有遇到过“不安全”的并发呢？" class="headerlink" title="3. InnoDB的一个重要特性就是多版本并发控制（MVCC），这是为了保证并发安全。真是业务里有没有遇到过“不安全”的并发呢？"></a>3. InnoDB的一个重要特性就是多版本并发控制（MVCC），这是为了保证并发安全。真是业务里有没有遇到过“不安全”的并发呢？</h3><p>是有的。但其实不是MySQL的锅……</p>
+<p>复现下这个场景，原渠道客户状态是基于<code>cst_status</code>,<code>check_status</code>这两个字段组合的。比如说</p>
+<table>
+<thead>
+<tr>
+<th>cst_status</th>
+<th>check_status</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4</td>
+<td>7</td>
+<td>认购</td>
+</tr>
+<tr>
+<td>4</td>
+<td>8</td>
+<td>签约</td>
+</tr>
+<tr>
+<td>5</td>
+<td>1</td>
+<td>结佣</td>
+</tr>
+</tbody></table>
+<p>所有业务里这两个字段一定都是同时更新的，（代码里绝对不存在单独更新其中某一个的地方）</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">update tb_cst_proj set cst_status&#x3D;?,check_status&#x3D;?;</span><br></pre></td></tr></table></figure>
+
+<p>然而，有段时间，线上时不时就突然出现一条5-8的客户数据（这个状态是不存在的）。这个问题非常偶现，我们也从来没有重现过，所以每次出现都是修数据。</p>
+<p>我们的代码里肯定没有写5-8的地方，但是客户不会信的。</p>
+<p>我也非常困惑，反复看了好几遍相关代码。写状态的地方都是在事务里执行的，而且是两个一起更新，且只会按预定的几种状态组合值更新，怎么会出现这种完全凭空捏造的状态。</p>
+<p>最后在某一次线上重现的机会下终于找运维要了binlog，定位时间查到，SQL执行的先后顺序大致如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">1. 5-1</span><br><span class="line">update tb_cst_proj set cst_status&#x3D;5,check_status&#x3D;1 where ...</span><br><span class="line"></span><br><span class="line">2. 8</span><br><span class="line">update tb_cst_proj set check_status&#x3D;8 where ...</span><br></pre></td></tr></table></figure>
+
+<p>原来一开始方向就错了，竟然可以单独更新某个？这个其实是代码的问题，不展开了，贴在这大家了解一下就好。框架代码里的特殊逻辑：如果你写的update语句中的某个字段和旧的值比较没有变化，在拼接SQL语句的时候就不会加上这个字段。</p>
+<p>整个过程完整理解下来就是这样：</p>
+<table>
+<thead>
+<tr>
+<th>session1</th>
+<th>session2</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>begin;</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>select cst_status,check_status from tb_cst_proj where...;</code> // 状态4-7</td>
+<td><code>begin;</code> // 事务2与事务1并发</td>
+</tr>
+<tr>
+<td>… （省略，和session2过程类似）</td>
+<td><code>select cst_status,check_status from tb_cst_proj where...;</code> // 第一次读，4-7</td>
+</tr>
+<tr>
+<td><code>update rpc set 5-1;</code> //</td>
+<td>x-lock</td>
+</tr>
+<tr>
+<td><code>commit;</code></td>
+<td>准备执行 <code>update rpc set 4-8;</code></td>
+</tr>
+<tr>
+<td>-</td>
+<td><code>select cst_status,check_status from tb_cst_proj where...;</code> // 第二次读，4-7</td>
+</tr>
+<tr>
+<td>-</td>
+<td>… (比较<code>update</code>的字段，<code>cst_status</code>还是4，没变，过滤掉</td>
+</tr>
+<tr>
+<td>-</td>
+<td><code>update tb_cst_proj set 8;</code></td>
+</tr>
+<tr>
+<td>-</td>
+<td><code>commit;</code></td>
+</tr>
+</tbody></table>
+<p>session1模拟的是业绩通知的结佣场景，session2模拟的是交易通知的场景。业绩功能刚上线的时候，用了这两个队列去分别处理这业绩和渠道交易的业务，并发场景非常普遍。后来做了一系列优化改进，不赘述了。</p>
+<p>试想一下，如果InnoDB的隔离级别是提交读，是不是可以避免这种情况呢？</p>
+<p>其实可以（我认为），但是没必要。首先，这个问题是代码逻辑引发的，<code>可重复读</code>本身没有问题，且对更多场景下更安全。其次，这个业务（初版）的设计是否完全合理，也应该考虑下。</p>
+<h3 id="4-按时间排序，翻页怎么取到了重复数据？"><a href="#4-按时间排序，翻页怎么取到了重复数据？" class="headerlink" title="4. 按时间排序，翻页怎么取到了重复数据？"></a>4. 按时间排序，翻页怎么取到了重复数据？</h3><p>分别执行以下两个SQL，模拟按修改时间排序和翻页的场景，执行结果如图。（为了先排除null值的影响，加上过滤条件<code>modify_on is not null</code>）</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 第一页</span><br><span class="line">select name,modify_on from tb_cst where modify_on is not null order by modify_on limit 0,5;</span><br><span class="line"># 第二页</span><br><span class="line">select name,modify_on from tb_cst where modify_on is not null order by modify_on limit 5,5;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://dony-1257037510.cos.ap-chengdu.myqcloud.com/markdown/sort.png" alt="image"></p>
+<p>结果发现有一个结果重复出现了两次。</p>
+<p>官方文档对这个的解释比较简单：</p>
+<blockquote>
+<p>If multiple rows have identical values in the ORDER BY columns, the server is free to return those rows in any order, and may do so differently depending on the overall execution plan. In other words, the sort order of those rows is nondeterministic with respect to the nonordered columns.</p>
+</blockquote>
+<p>原因是在MySQL 5.6的版本上，优化器在遇到order by limit语句的时候，做了一个优化，即使用了优先队列（priority queue），priority queue使用的是堆排序的排序算法，，而堆排序是一个不稳定的排序方法，也就是相同的值可能排序出来的结果和读出来的数据顺序不一致。</p>
+<p>什么情况下会用到priority queue？</p>
+<p>在排序字段上没有索引，且排序量不大的情况下（也就是通常使用limit的情况下），优化器就会选择使用优先队列。</p>
+<p>如何避免？</p>
+<p>(1) 尽量避免在非索引字段上进行排序，如果业务上需要要大量频繁使用此字段排序，最好还是加索引。</p>
+<p>(2) 如果只是偶尔用到该字段排序，可以在order by上加上主键，保证每次读取顺序都是一致的。</p>
+<p>如果索引字段上存在NULL值会发生什么？</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 正序</span><br><span class="line">select cst_name,create_on from tb_cst where create_on is null order by create_on limit 0,5;</span><br><span class="line"># 倒序</span><br><span class="line">select cst_name,create_on from tb_cst where create_on is null order by create_on desc limit 0,5;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://dony-1257037510.cos.ap-chengdu.myqcloud.com/markdown/QQ%E6%88%AA%E5%9B%BE20200803165405.png" alt="image"></p>
+<p>null值是不参与排序的，正序倒序取出来都是一样，所以这种情况下分页的业务也可能存在问题。我们尽量在定义字段的时候就使用not null，或给定默认值。对于已经存在的业务，避免这种情况也可以使用<code>order by [null索引,主键]</code>的方法。</p>
+<h3 id="5-业务里有没有可能引发死锁的逻辑？"><a href="#5-业务里有没有可能引发死锁的逻辑？" class="headerlink" title="5. 业务里有没有可能引发死锁的逻辑？"></a>5. 业务里有没有可能引发死锁的逻辑？</h3><p>答案是有的。</p>
+<p>简单描述一下这个业务场景，业务规则下有++竞争模式++和++保护模式++，</p>
+<p><strong>前提</strong><br>(1) 如果是竞争模式，这个客户会保存到竞争分组表中。接下来即使有保护模式客户写入，那么他们就会形成一组竞争客户（反之不会）。<br>(2) 任何竞争模式中的客户，都会在无效时被移除。<br>(3) 当自己无效后，会去查竞争表中是否还有和自己同一分组下的竞争数据，如果刚好只剩一条，而这条客户还是保护模式，就要把这一条也移除。</p>
+<p>竞争分组表主要字段如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">id </span><br><span class="line">group_id</span><br><span class="line">cst_id</span><br></pre></td></tr></table></figure>
+
+<p>模拟以下这种场景：</p>
+<table>
+<thead>
+<tr>
+<th>session 1 (张三无效)</th>
+<th>session 2 (李四无效)</th>
+<th>session 3 (王五无效)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>begin;</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>delete from competition where id=1;</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>select id from competition where group_id=&#39;abc&#39;; //结果有两条，不处理</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>commit;</code></td>
+<td><code>begin;</code></td>
+<td><code>begin;</code></td>
+</tr>
+<tr>
+<td>-</td>
+<td><code>delete from competition where id=2;</code> row 2 x-lock</td>
+<td><code>delete from competition where id=3;</code> row 3 x-lock</td>
+</tr>
+<tr>
+<td>-</td>
+<td><code>select id from competition where group_id=&#39;abc&#39;</code></td>
+<td><code>select id from competition where group_id=&#39;abc&#39;</code></td>
+</tr>
+<tr>
+<td>-</td>
+<td>只剩id=3 且是保护带看 准备执行 <code>delete from competition where id=3;</code></td>
+<td>只剩id=2 且是保护带看 <code>delete from competition where id=2;</code></td>
+</tr>
+<tr>
+<td>-</td>
+<td>等待 row3 lock…</td>
+<td>等待 row2 lock…</td>
+</tr>
+</tbody></table>
+<p>InnoDB 是使用 wait-for（等待图）的方式来进行死锁检测。用到两个链表：(1) 锁等待信息链表 (2) 事务等待链表</p>
+<p>这个场景下事务信息链表是 t2-t3</p>
+<p>锁等待信息是<br><code>row2</code> t2:x - t3:x<br><code>row3</code> t3:x - t2:x</p>
+<p>这个图就是这样，存在回路就说明存在死锁</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">graph LR</span><br><span class="line">t1--&gt;t2</span><br><span class="line">t2--&gt;t1</span><br></pre></td></tr></table></figure>
+
+<p>这个问题是怎么解决的？</p>
+<p>目前其实还没解决……报错较少，暂时还没有造成过大影响（发生死锁，InnoDB会选择回滚undo量最小的事务，在程序里就是异常失败，重新入列，最终还是被无效掉，表面上看业务还是“无损”的）</p>
+<p>但如果解决的话，我的思路是把<code>select</code>放在<code>delete</code>前，如果除了自己只剩一条其他的保护带看，就同时删掉，这样一次性申请写锁，不会两边互相等待。</p>
+<h3 id="6-数据升级，int类型转varchar遭遇的深坑"><a href="#6-数据升级，int类型转varchar遭遇的深坑" class="headerlink" title="6. 数据升级，int类型转varchar遭遇的深坑"></a>6. 数据升级，int类型转varchar遭遇的深坑</h3><p>业务场景是这样的，表A与表B的对应关系是<strong>一对多</strong>，原本是通过A表的主键（自增）ID关联的，由于自增ID经常遭遇数据迁移的种种问题，于是A表新增了一个长度36的uuid字段，B表的关联ID也全部更新为该字段。</p>
+<p>理论上，正常的升级流程就是：</p>
+<p>(1) A表新增字段，并生成唯一的uuid</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ALTER TABLE &#96;tbl_a&#96; ADD COLUMN &#96;uuid&#96;  varchar(36) NOT NULL DEFAULT &#39;&#39;;</span><br><span class="line">UPDATE &#96;tbl_a&#96; SET uuid&#x3D;UUID() WHERE uuid&#x3D;&#39;&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>(2) 更新B表字段类型为<code>varchar</code></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ALTER TABLE &#96;tbl_b&#96; MODIFY COLUMN a_id VARCHAR(36) COMMENT &#39;A表uuid&#39;;</span><br><span class="line"></span><br><span class="line">UPDATE s_print_record SET record_uuid &#x3D; UUID() WHERE record_uuid &#x3D; &#39;&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>(3) 通过原关联关系（自增id关联）批量更新为uuid关联</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">UPDATE &#96;tbl_a&#96; a, &#96;tbl_b&#96; b SET b.a_id &#x3D; a.uuid WHERE b.a_id &#x3D; a.id;</span><br></pre></td></tr></table></figure>
+
+<p>正常情况下，如果你自己按此方法测试，是不会轻易踩到坑上的。这是因为<strong>第三步只执行了一次</strong>，如果你的脚本被重复执行，就是巨大灾难。</p>
+<p>造成这个问题的原因就是<strong>MySQL的隐式类型转换</strong></p>
+<p>简单来说，上面的步骤三里的更新条件是<code>b.a_id=a.id</code>，而这两个字段类型已经不一样，MySQL中字符串类型字段与int类型的字段之间比较会将字符串强制转换为int，假设A表id=1的数据uuid是’3abcd…’，那么模拟重现就是：</p>
+<p>第一次：目前B表的a_id都还是数字，会直接找出<code>a_id=&#39;1&#39;</code>的数据，更新为a的uuid ‘3abcd…’</p>
+<p>第二次：B表的这条数据在第二次比较时被强制转换为int，’3abcd…’就变成了<strong>3</strong>，这次执行就会把这条数据更新为A表的自增ID为3的那条数据的uuid了</p>
+<p>如此一来，数据就全乱套了。而且uuid通常的生成规则都是按时间戳等，前缀基本是一样的，可能这一批都是3开头，那么所有数据经过二次执行后都变成一样的关联id了，这就是大灾难啊。</p>
+<h2 id="慢SQL排查的一些建议"><a href="#慢SQL排查的一些建议" class="headerlink" title="慢SQL排查的一些建议"></a>慢SQL排查的一些建议</h2><h3 id="追踪优化器"><a href="#追踪优化器" class="headerlink" title="追踪优化器"></a>追踪优化器</h3><ul>
+<li>基本用法</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># Turn tracing on (it&#39;s off by default):</span><br><span class="line">SET optimizer_trace&#x3D;&quot;enabled&#x3D;on&quot;;</span><br><span class="line">SELECT ...; # your query here</span><br><span class="line">SELECT * FROM INFORMATION_SCHEMA.OPTIMIZER_TRACE;</span><br><span class="line"># possibly more queries...</span><br><span class="line"># When done with tracing, disable it:</span><br><span class="line">SET optimizer_trace&#x3D;&quot;enabled&#x3D;off&quot;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>输出</li>
+</ul>
+<figure class="highlight"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;steps&quot;</span>:[</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;join_preparation&quot;: &#123;...&#125;</span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;join_optimization&quot;: &#123;...&#125;</span><br><span class="line">        &#125;，</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;join_execution&quot;: &#123;...&#125;</span><br><span class="line">        &#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个json树非常长，很难阅读，你可以快速搜索 <code>&quot;chosen&quot;: true</code> 查找优化器对每种优化方案的选择。或者只查看最终的<code>refine_plan</code> </p>
+<blockquote>
+<p>文档：<a href="https://dev.mysql.com/doc/internals/en/optimizer-tracing.html">Tracing the Optimizer</a></p>
+</blockquote>
+<h3 id="查看系统变量信息"><a href="#查看系统变量信息" class="headerlink" title="查看系统变量信息"></a>查看系统变量信息</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">FLUSH STATUS; </span><br><span class="line"></span><br><span class="line">SELECT ...; # your query here</span><br><span class="line"></span><br><span class="line">SHOW SESSION STATUS LIKE &#39;Handler%&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>相关字段:</p>
+<ul>
+<li><code>Handler_read_key</code> 基于键读取行的请求数。如果此值很高，则表明您的表已为查询正确索引。</li>
+<li><code>Handler_read_next</code> 按键顺序读取下一行的请求数。如果要查询具有范围约束的索引列或进行索引扫描，则此值将增加。</li>
+<li><code>Handler_read_rnd_next</code> 读取数据文件下一行的请求数。如果要进行大量表扫描，则此值较高。通常，这表明您的表未正确建立索引，或者未编写查询以利用您拥有的索引。</li>
+</ul>
+<blockquote>
+<p>官方文档：<a href="https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html">Server Status Variables</a></p>
+</blockquote>
+<h3 id="扫描行数"><a href="#扫描行数" class="headerlink" title="扫描行数"></a>扫描行数</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SELECT VARIABLE_VALUE INTO @a FROM INFORMATION_SCHEMA.session_status WHERE variable_name &#x3D; &#39;Innodb_rows_read&#39;;</span><br><span class="line"></span><br><span class="line">SELECT ...; # your query here</span><br><span class="line"></span><br><span class="line">SELECT VARIABLE_VALUE INTO @b FROM INFORMATION_SCHEMA.session_status WHERE variable_name &#x3D; &#39;Innodb_rows_read&#39;;</span><br><span class="line">SELECT @b-@a;</span><br></pre></td></tr></table></figure>
+
+<p>==备注：==</p>
+<ol>
+<li>在线上数据库别这么查，因为每分每秒都有很多事务在进行，不是只有你这一条数据，得到的这个值是不准的，没什么参考性。</li>
+<li>你可以在你自己的干净环境下查看不同语句的返回行数来优化语句</li>
+<li>如果你的MySQL版本是5.7以上，就不要查<code>INFORMATION_SCHEMA.session_status</code>了，改用<code>performance_schema.session_status</code>(在MySQL 8.0 <code>SHOW</code>语句全部基于基础的Performance Schema表)</li>
+</ol>
+<h3 id="选择索引的建议"><a href="#选择索引的建议" class="headerlink" title="选择索引的建议"></a>选择索引的建议</h3><p>查看Cardinality值</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">show index from table;</span><br></pre></td></tr></table></figure>
+
+<p>实际上cardinality是一个预估值，而不是一个准确值。在实际应用中，cardinality/n_rows_in_table 应尽可能地接近1。如果特别小，就要考虑是否有必要创建这个索引。</p>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>实战总结</tag>
+        <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>mysql频繁重启 问题解决</title>
+    <url>/2020/04/01/Mysql_shutdown/</url>
+    <content><![CDATA[<p>最近每天晚上的定时任务都会跑失败，业务错误日志都是<span class="label danger">MySQL server has gone away</span>。去查MySQL的日志也没有对应的错误信息，只有启动日志：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">2020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting as process 10717</span><br><span class="line">2020-01-19T07:04:09.716710Z 0 [System] [MY-010229] [Server] Starting crash recovery...</span><br><span class="line">2020-01-19T07:04:09.786959Z 0 [System] [MY-010232] [Server] Crash recovery finished.</span><br></pre></td></tr></table></figure>
+
+<span id="more"></span>
+
+<p>查看内核日志（dmesg |grep mysqld），发现是内存不够用直接被kill掉了。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[5974675.178431] [32531]  1000 32531   343724   120571     343        0             0 mysqld</span><br><span class="line">[5974675.178504] Out of memory: Kill process 32531 (mysqld) score 476 or sacrifice child</span><br><span class="line">[5974675.180641] Killed process 32531 (mysqld) total-vm:1374896kB, anon-rss:482284kB, file-rss:0kB, shmem-rss:0kB</span><br></pre></td></tr></table></figure>
+
+<p>我的服务器配置如下，可见资源非常紧张，然而运行一个几乎无人访问的<a href="https://prettycrazyjoey.cn/"><span class="label info">小网站</span></a>应该也够了。</p>
+<table>
+<thead>
+<tr>
+<th>操作系统</th>
+<th>CPU</th>
+<th>内存</th>
+<th>公网带宽</th>
+<th>硬盘</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CentOS 7.5 64位</td>
+<td>1核</td>
+<td>1GB</td>
+<td>1Mbps</td>
+<td>50GB</td>
+</tr>
+</tbody></table>
+<p>但问题还是要解决的，不然每天<i>free -m</i>提心吊胆的实在是太折磨。我最初想到的方法是调整MySQL配置和定期清理缓存，经过一番查询和亲自实践才发现最有效的办法其实是使用交换文件作为虚拟内存。总之，这里还是记录和总结一下具体的解决方法吧。</p>
+<h4 id="1-调整MySQL配置"><a href="#1-调整MySQL配置" class="headerlink" title="1. 调整MySQL配置"></a>1. 调整MySQL配置</h4><p>MySQL刚安装的时候就已经把innodb_buffer_pool_size调整到了80M，只好继续调低，目前配置64M（<strong>注意</strong>：要同时修改<span class="label primary">innodb_buffer_pool_chunk_size</span>的大小，该值和innodb_buffer_pool_size一样都是默认128M。它相当于缓冲池的最小单位，如果缓冲池总大小比该值还小，在初始化时实际上不会改变）。但感觉这应该节省不了多少内存，只好继续从别的配置项着手。有关buffer_size相关的各配置项的详细说明请参见 <a href="/2020/03/01/Mysql_buffer_size/"><span class="label info">《MySQL：buffer_size相关配置》</span></a>。</p>
+<p>实际上，以我当前的服务器条件，在修改配置上节省出更多的内存，优化的空间已经非常小，且大部分MySQL的默认配置已经是相对最优的了。所以还是应该换个思路。</p>
+<h4 id="2-使用Swap虚拟内存"><a href="#2-使用Swap虚拟内存" class="headerlink" title="2. 使用Swap虚拟内存"></a>2. 使用Swap虚拟内存</h4><p><u><em>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</em></u></p>
+<p>更详细一些的介绍可以参考这篇，<a href="/2020/02/11/Swap/"><span class="label info">Swap介绍与应用</span></a>。</p>
+<p>最快捷的方法就是安装systemd-swap来使用交换空间，这是一个用来管理swap的脚本，只要简单几步就可以将复杂的创建和配置过程搞定，如下：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 安装systemd-swap包</span></span><br><span class="line">git clone https://github.com/Nefelim4ag/systemd-swap.git</span><br><span class="line">cd systemd-swap</span><br><span class="line">sudo make install</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置/etc/systemd/swap.conf的交换文件分块配置</span></span><br><span class="line">swapfc_enabled=1</span><br><span class="line">swapfc_force_preallocated=1 (如果日志一直报这个错误systemd-swap[..]: WARN: swapFC: ENOSPC，就开启)</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 启动systemd-swap服务</span></span><br><span class="line">sudo service systemd-swap start</span><br></pre></td></tr></table></figure>
+
+<h4 id="【后记】"><a href="#【后记】" class="headerlink" title="【后记】"></a>【后记】</h4><p>在使用Swap之前基本上MySQL每天都会重启一两次，使用之后就没再发生过重启的情况了，到目前也已经将近两个月过去了，而数据也是在不断增加的，实践证明，在内存空间不是十分富裕的情况下使用Swap交换空间作为虚拟内存，是非常有效的措施。</p>
+<p>当前的内存使用情况如下：</p>
+<table>
+<thead>
+<tr>
+<th>-</th>
+<th>total</th>
+<th>used</th>
+<th>free</th>
+<th>shared</th>
+<th>buff/cache</th>
+<th>available</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mem:</td>
+<td>991</td>
+<td>533</td>
+<td>66</td>
+<td>0</td>
+<td>392</td>
+<td>278</td>
+</tr>
+<tr>
+<td>Swap:</td>
+<td>1023</td>
+<td>566</td>
+<td>457</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>实战总结</tag>
+        <tag>Linux</tag>
+        <tag>网站开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Go爬虫 http code 521问题解决</title>
+    <url>/2020/03/29/Goquery_521/</url>
+    <content><![CDATA[<p>今天在帮朋友爬取好大夫网站的时候，一直被卡在请求医生个人主页上。打印错误信息发现返回的http code都是521，而直接打开网页又是正常的。对于这个状态码我并不了解，但是前功尽弃又实在不甘心，只好Google寻找答案。</p>
+<span id="more"></span>
+
+<p>最终是这篇文章帮到了我：<a href="https://blog.csdn.net/wangdepei/article/details/84798601"><span class="label info">HTTP STATUS CODE: 521的解决办法</span></a></p>
+<p>我在Postman和Chrome浏览器上还原这个场景，果然和文章描述非常一致。</p>
+<p><a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes"><span class="label info">List of HTTP status codes</span></a> 中对http code 521的定义是：</p>
+<blockquote>
+<p>Web Server Is Down: The origin server has refused the connection from Cloudflare.</p>
+</blockquote>
+<p>实际上，这是网站防爬虫的一种措施。了解了这一措施的执行方式，也就可以抽丝剥茧一步一步去解决这个问题了。</p>
+<p>具体的分析过程就不赘述了，直接参考上面那篇文章即可，这里我简单记录一下在代码中解决的完整过程：</p>
+<ol>
+<li><p>发起一个请求。这是正常操作，但是这一次请求肯定不能得到有效的页面，不过都是必走的过程，无法避免。<br> (1) 先清除cookie（在postman下使用带cookie的请求得到的js代码无法解析，而浏览器是可以正常跳转的，这里不深究了，直接清掉以绝后患）;</p>
+ <figure class="highlight go"><table><tr><td class="code"><pre><span class="line">req.Header.Del(<span class="string">&quot;Cookie&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p> (2) 设置该请求的Connection为keep-alive（<span class="label danger">第二个请求要使用同一个req发起，所以这个请求是不能close掉的</span>）</p>
+ <figure class="highlight go"><table><tr><td class="code"><pre><span class="line">req.Header.Add(<span class="string">&quot;Connection&quot;</span>, <span class="string">&quot;keep-alive&quot;</span>)</span><br><span class="line">req.Close = <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<p> (3) 发起请求并拿到响应结果（略）</p>
+</li>
+<li><p>获取响应头的Set-Cookie属性，打印出来该值如下，这里只需要拿到__jsluid_h的值即可：</p>
+ <figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">__jsluid_h=a44718981efe4f7006fece7f82d69844; max-age=<span class="number">31536000</span>; path=/; HttpOnly</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取response body，看起来像是一段js代码和一堆乱码组成，我们只需要<code>&lt;script&gt;</code>和<code>&lt;/script&gt;</code>之间的js代码 ，打印输出如下：<br> <i style="font-size:12px;"> <div class="note default">
+            <p>var x=”captcha@charAt@@@toLowerCase@@@onreadystatechange@Mar@Expires@firstChild@@@@chars@innerHTML@40@parseInt@if@while@@@createElement@@H@String@0xEDB88320@join@fromCharCode@@30@a@@@div@20@match@Mon@addEventListener@@DOMContentLoaded@split@17@19@pathname@@@challenge@rOm9XFMtA3QKV7nYsPGT4lifyWwkq5vcjH2IdxUoCbhERLaz81DNB6@Path@else@GMT@href@toString@e@function@@0xFF@false@@0@RegExp@@catch@@JgSe0upZ@Array@@@27@@@@<em>_jsl_clearance@3@@substr@3D@document@@@return@k7zgL@location@g@cookie@@replace@window@2@1500@h@67Yn@@eval@new@search@@8@try@1585586419@@6@@charCodeAt@@reverse@f@d@var@@attachEvent@setTimeout@@@n@https@for@@@@length@@36@1@@@2Fs”.replace(/@<em>$/,””).split(“@”),y=”2u o=1g(){2x(‘24.1d=24.15+24.2h.28(/[\?|&amp;]1-18/,\‘\‘)’,2b);1D.26=’1y=2l.1u|1l|’+(1g(){2u y=[1g(o){22 o},1g(y){22 y},(1g(){2u o=1D.n(‘z’);o.g=’&lt;w 1d=\‘/\‘&gt;7</w>‘;o=o.b.1d;2u y=o.B(/2B?:\/\//)[1l];o=o.1B(y.32).5();22 1g(y){2C(2u 7=1l;7&lt;y.32;7++){y[7]=o.2(y[7])};22 y.s(‘’)}})(),1g(o){22 2f(‘q.t(‘+o+’)’)}],7=[[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],[-<del>-</del>[]],[[2n]+[2n],[(-<del>[]+[-</del>-<del>[]]&gt;&gt;-</del>-<del>[])-</del>(+!![][{}])-<del>[-</del>![]-<del>![]]]+[(+[])]],’2c’,[[2n]+(-</del>(2j)+[])],’2A’,[(2j+[]+[])+(2j+[]+[])],[2n]+((-<del>(+!![][{}])+[</del>{}])/[(-<del>![]&lt;&lt;-</del>![])]+[[]][1l]),’p%38’,[-<del>-</del>[]],[[-<del>![]]+[-</del>![]]+(-<del>[-</del>![]-<del>![]]+[]+[])],’2d’,[[-</del>![]]],’23’,[(-<del>[-</del>![]-<del>![]]+[]+[]),((-</del>(+!![][{}])+[<del>{}])/[(-</del>![]&lt;&lt;-<del>![])]+[[]][1l])],(!-{}+[]).2(</del>[]),’25’,[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],’1C’];2C(2u o=1l;o&lt;7.32;o++){7[o]=y<a href="7[o]">[1z,1l,1z,35,1z,35,1z,1l,35,1l,1z,35,2a,35,2a,1l,35,1z,35][o]</a>};22 7.s(‘’)})()+’;a=C, v-9-A 13:h:14 1c;1a=/;’};j((1g(){2k{22 !!29.D;}1o(1f){22 1j;}})()){1D.D(‘11’,o,1j)}1b{1D.2w(‘8’,o)}”,f=function(x,y){var a=0,b=0,c=0;x=x.split(“”);y=y||99;while((a=x.shift())&amp;&amp;(b=a.charCodeAt(0)-77.5))c=(Math.abs(b)&lt;13?(b+48.5):parseInt(a,36))+y</em>c;return c},z=f(y.match(/\w/g).sort(function(x,y){return f(x)-f(y)}).pop());while(z++)try{ console.log(y.replace(/\b\w+\b/g, function(y){return x[f(y,z)-1]||(“</em>“+y)}));break}catch(_){}</p>
+          </div></i></p>
+</li>
+<li><p>接下来要执行上面这段js，这里需要用到运行js代码的go包：<a href="https://github.com/robertkrimen/otto"><span class="label info">github.com/robertkrimen/otto</span></a>，使用方法也很简单，直接参考文档就好。但是上面这段代码还是存在一些问题，直接运行是拿不到任何返回结果的。我的解决方式如下，先使用<span class="label primary">console.log()</span>输出控制台日志，再在js代码里加一段代码，返回最后一条log结果。代码如下：</p>
+ <figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">//先把上段js代码中的eval替换成console.log</span></span><br><span class="line">js = strings.Replace(js, <span class="string">&quot;eval(&quot;</span>, <span class="string">&quot; console.log(&quot;</span>, <span class="number">-1</span>)</span><br><span class="line"><span class="comment">// 加入一段返回log的js代码</span></span><br><span class="line">consoleJs := <span class="string">&quot;var lastLog = \&quot;\&quot;;console.oldLog = console.log;console.log = function(str) &#123;console.oldLog(str);lastLog = str;&#125;;&quot;</span></span><br><span class="line"><span class="comment">// 拼接起来，并执行最终这段js</span></span><br><span class="line">js = consoleJs + js</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>执行后得到的第二段js代码如下，结果依然非常乱，其他的不用管，直接找到我们需要的第二个cookie的key，也就是<span class="label danger">__jsl_clearance</span>，=后面的内容就是我们需要的值：1585492297.69|0| + function(){}，前半段很好说，主要是后半段的function的内容看起来十分隐晦，不过既然是js代码，我们还是可以通过运行它来获取答案的。</p>
+<p> <i style="font-size:12px"> <div class="note default">
+            <p>var _o=function(){setTimeout(‘location.href=location.pathname+location.search.replace(/[?|&amp;]captcha-challenge/,&#39;&#39;)’,1500);<span class="label danger">document.cookie=__jsl_clearance=1585586419.27|0|</span>+(function(){var _y=[function(_o){return _o},function(_y){return _y},(function(){var _o=document.createElement(‘div’);_o.innerHTML=’&lt;a href=&#39;/&#39;&gt;_7</a>‘;_o=_o.firstChild.href;var _y=_o.match(/https?:///)[0];_o=_o.substr(_y.length).toLowerCase();return function(_y){for(var _7=0;_7&lt;_y.length;_7++){_y[_7]=_o.charAt(_y[_7])};return _y.join(‘’)}})(),function(_o){return eval(‘String.fromCharCode(‘+_o+’)’)}],_7=[[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],[-<del>-</del>[]],[[6]+[6],[(-<del>[]+[-</del>-<del>[]]&gt;&gt;-</del>-<del>[])-</del>(+!![][{}])-<del>[-</del>![]-<del>![]]]+[(+[])]],’h’,[[6]+(-</del>(8)+[])],’n’,[(8+[]+[])+(8+[]+[])],[6]+((-<del>(+!![][{}])+[</del>{}])/[(-<del>![]&lt;&lt;-</del>![])]+[[]][0]),’H%2Fs’,[-<del>-</del>[]],[[-<del>![]]+[-</del>![]]+(-<del>[-</del>![]-<del>![]]+[]+[])],’67Yn’,[[-</del>![]]],’k7zgL’,[(-<del>[-</del>![]-<del>![]]+[]+[]),((-</del>(+!![][{}])+[<del>{}])/[(-</del>![]&lt;&lt;-<del>![])]+[[]][0])],(!-{}+[]).charAt(</del>[]),’g’,[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],’3D’];for(var _o=0;_o&lt;_7.length;_o++){_7[_o]=_y<a href="_7[_o]">[3,0,3,1,3,1,3,0,1,0,3,1,2,1,2,0,1,3,1][_o]</a>};return _7.join(‘’)})()+’;Expires=Mon, 30-Mar-20 17:40:19 GMT;Path=/;’};if((function(){try{return !!window.addEventListener;}catch(e){return false;}})()){document.addEventListener(‘DOMContentLoaded’,_o,false)}else{document.attachEvent(‘onreadystatechange’,_o)}</p>
+          </div> </i></p>
+<p> 以下就是截取出来的cookie值后半段的js代码了（因为在原代码段中这是个闭包函数，截取出来是无法直接执行的，所以把function中的内容单独拿出来，定义为一个新函数f。</p>
+<p> <i style="font-size:12px"> <div class="note default">
+            <p>function f(){var _y=[function(_o){return _o},function(_y){return _y},(function(){var _o=document.createElement(‘div’);_o.innerHTML=’&lt;a href=&#39;/&#39;&gt;_7</a>‘;_o=_o.firstChild.href;var _y=_o.match(/https?:///)[0];_o=_o.substr(_y.length).toLowerCase();return function(_y){for(var _7=0;_7&lt;_y.length;_7++){_y[_7]=_o.charAt(_y[_7])};return _y.join(‘’)}})(),function(_o){return eval(‘String.fromCharCode(‘+_o+’)’)}],_7=[[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],[-<del>-</del>[]],[[6]+[6],[(-<del>[]+[-</del>-<del>[]]&gt;&gt;-</del>-<del>[])-</del>(+!![][{}])-<del>[-</del>![]-<del>![]]]+[(+[])]],’h’,[[6]+(-</del>(8)+[])],’n’,[(8+[]+[])+(8+[]+[])],[6]+((-<del>(+!![][{}])+[</del>{}])/[(-<del>![]&lt;&lt;-</del>![])]+[[]][0]),’H%2Fs’,[-<del>-</del>[]],[[-<del>![]]+[-</del>![]]+(-<del>[-</del>![]-<del>![]]+[]+[])],’67Yn’,[[-</del>![]]],’k7zgL’,[(-<del>[-</del>![]-<del>![]]+[]+[]),((-</del>(+!![][{}])+[<del>{}])/[(-</del>![]&lt;&lt;-<del>![])]+[[]][0])],(!-{}+[]).charAt(</del>[]),’g’,[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],’3D’];for(var _o=0;_o&lt;_7.length;_o++){_7[_o]=_y<a href="_7[_o]">[3,0,3,1,3,1,3,0,1,0,3,1,2,1,2,0,1,3,1][_o]</a>};return _7.join(‘’)} </p>
+          </div> </i></p>
+<p> 尝试执行这段js，问题又出现了。开始报<span class="label warning">'document' is not defined</span> 等错误。报错主要集中在这一部分中：<span class="label danger"> var _o=document.createElement(div);_o.innerHTML=<a href='/'>_7</a>;_o=_o.firstChild.href;var _y=_o.match(/https?:\/\//)[0];_o=_o.substr(_y.length).toLowerCase();</span>，无论你熟不熟悉js都应该看得出这段看似冗长的代码实际上不过是在给一个变量赋值。<br> 但是这些错误很难破解，因为<span class="label primary">不是在浏览器环境下，无法使用DOM对象</span>。不过都想到这里了，那不妨试试在浏览器下执行它会是什么结果。打开Chrome控制台执行这部分代码，并输出最终的这个变量值。<br> 看到结果后我不禁长舒一口气，竟然是当前页面的域名。既然如此那就不用绞尽脑汁去想如何解决js报错了，直接<span class="label primary">将这个变量赋值为当前域名</span>就好了。<br> 之后使用otto执行这个函数（或在js里执行，直接run()获取结果都可）。这样就拿到第二个cookie的后半段的值了。和前半部分拼接起来就是我们要的答案：</p>
+ <figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">__jsl_clearance=<span class="number">1585492297.69</span>|<span class="number">0</span>|CvTK%2BIDWOOHs4DdtqxrDiz7%2BU%3D</span><br></pre></td></tr></table></figure>
+
+<p> 补充：如果还遇到类似<span class="label warning">'window' is not defined</span>的报错，直接在前面创建一个默认对象就好，如下</p>
+ <figure class="highlight go"><table><tr><td class="code"><pre><span class="line">preJs := <span class="string">&quot;var window = &#123;&#125;;&quot;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>最后，把完整的cookie加到请求头中再发起一起请求，就可以获得200的正常返回了。</p>
+ <div class="note success">
+            <p>Cookie: <strong>jsluid_h=a44718981efe4f7006fece7f82d69844;</strong>jsl_clearance=1585586419.27|0|%2BFhEnX65H%2Fs2q67Ynuk7zgLietg%3D</p>
+          </div>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>Go</tag>
+        <tag>网络爬虫</tag>
+        <tag>实战总结</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MySQL：buffer_size相关配置</title>
+    <url>/2020/03/01/Mysql_buffer_size/</url>
+    <content><![CDATA[<p>MySQL中涉及到size的缓冲配置项有不少，有些配置对性能的影响还是较大的，这里简单介绍一下。</p>
+<span id="more"></span>
+
+<p>首先查一下带<span class="label info">buffer_size</span>相关的配置项，如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mysql&gt; SHOW VARIABLES LIKE &#39;%buffer_size%&#39;;</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">| Variable_name           | Value    |</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">| bulk_insert_buffer_size | 8388608  |</span><br><span class="line">| innodb_log_buffer_size  | 16777216 | </span><br><span class="line">| innodb_sort_buffer_size | 1048576  |</span><br><span class="line">| join_buffer_size        | 262144   |</span><br><span class="line">| key_buffer_size         | 8388608  |</span><br><span class="line">| myisam_sort_buffer_size | 8388608  |</span><br><span class="line">| preload_buffer_size     | 32768    |</span><br><span class="line">| read_buffer_size        | 131072   |</span><br><span class="line">| read_rnd_buffer_size    | 262144   |</span><br><span class="line">| sort_buffer_size        | 262144   |</span><br><span class="line">+-------------------------+----------+</span><br><span class="line">10 rows in set (0.00 sec)</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th><div style="width:100px">Variable_name</div></th>
+<th><div style="width:40px">范围</div></th>
+<th><div style="width:30px">是否动态参数</div></th>
+<th><div style="width:35px">默认值</div></th>
+<th><div style="width:35px">最小值</div></th>
+<th><div style="width:55px">最大值</div></th>
+<th><div style="width:150px">说明</div></th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>bulk_insert_buffer_size<br>(<span style="color:red">MyISAM专用</span>)</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>8MB</td>
+<td>0</td>
+<td>4GB(32 bit)<br>-(64 bit)</td>
+<td>MyISAM批量插入非空表数据时使用的高速树状缓存区大小（以每个线程为单位）</td>
+<td>-</td>
+</tr>
+<tr>
+<td>innodb_log_buffer_size<br>(<span style="color:red">InnoDB专用</span>)</td>
+<td>Global</td>
+<td>Yes</td>
+<td>16MB</td>
+<td>1MB</td>
+<td>4GB</td>
+<td>InnoDB用来写入磁盘日志文件的缓冲区的字节大小</td>
+<td>如果业务代码中比较多较大的事务处理，最好将该值调大一些，避免事务提交前频繁写入磁盘，节省磁盘I/O</td>
+</tr>
+<tr>
+<td>innodb_sort_buffer_size<br>(<span style="color:red">InnoDB专用</span>)</td>
+<td>Global</td>
+<td>No</td>
+<td>1MB</td>
+<td>64KB</td>
+<td>64MB</td>
+<td>指定在创建InnoDB索引期间用于排序数据的排序缓冲区的大小</td>
+<td>(1) 此排序区域<span class="label info">仅用于创建索引期间的合并排序</span>，而不用于以后的索引维护操作。在索引创建完成时释放缓冲区；<br>(2) 此选项的值还控制在联机DDL操作期间扩展临时日志文件以记录并发DML的数量；<br>(3) 在<span class="label info">创建索引</span>的<span class="label info">ALTER TABLE</span>或<span class="label info">CREATE TABLE</span>语句中，将分配<span class="label info">3个</span>缓冲区，每个缓冲区的大小由该选项定义。另外，将辅助指针分配给排序缓冲区中的行，以便排序可以在指针上运行(而不是在排序操作期间移动行)</td>
+</tr>
+<tr>
+<td>join_buffer_size</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>256KB</td>
+<td>128B</td>
+<td>4GB(Windows)<br>4GB(32 bit)<br>-(64 bit)</td>
+<td>用于普通索引(plain index)扫描、范围索引(range index)扫描和不使用索引执行全表扫描的联接(join)的缓冲区的最小大小</td>
+<td>(1) 每两个表之间的全联接(full join)被分配1个join buffer，如果是多个表的复杂连接，需要多个join buffer。<br>(2) <span class="label info">最好保持全局设置较小</span>，如果全局大小大于使用它的大多数查询所需的大小，那么内存分配时间会导致显著的性能下降。<br>(3) 当使用<span class="label info">块嵌套循环</span>(Block Nested-Loop)时，较大的联接缓冲区可以在第一个表中所有行中的所有必需列都存储在联接缓冲区中的情况下发挥有益的作用。<br>(4) 当使用<span class="label info">批处理密钥访问</span>(Batched Key Access)时，join_buffer_size的值定义了向存储引擎发出的每个请求中密钥的批处理大小。缓冲区越大，对联接操作的右表的顺序访问就越多，这可以显著提高性能</td>
+</tr>
+<tr>
+<td>key_buffer_size<br>(<span style="color:red">MyISAM专用</span>)</td>
+<td>Global</td>
+<td>Yes</td>
+<td>8MB</td>
+<td>8B</td>
+<td>4GB(32 bit)<br><div style="width:55px">OS_PER_PROCESS_LIMIT(64 bit)</div></td>
+<td><div style="width:150px">索引缓冲区（索引缓存），设置的最大值不要超过机器总内存的25%。可以通过<span style="font-size:0.6em">Key_reads/Key_read_requests</span>（应&lt;0.01），<span style="font-size:0.6em;">Key_writes/Key_write_requests</span>，检查索引缓冲的性能</div></td>
+<td>使用中的缓冲区比例（近似值）：<br>1 - ((Key_blocks_unused * key_cache_block_size) / key_buffer_size)</td>
+</tr>
+<tr>
+<td>myisam_sort_buffer_size<br>(<span style="color:red">MyISAM专用</span>)</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>8MB</td>
+<td>4KB</td>
+<td>4GB(32 bit)<br>-(64 bit)</td>
+<td>在REPAIR TABLE期间对MyISAM索引排序或使用CREATE INDEX或ALTER TABLE创建索引时分配的缓冲区大小</td>
+<td>-</td>
+</tr>
+<tr>
+<td>preload_buffer_size</td>
+<td>Global,<br>Session</td>
+<td>Yes</td>
+<td>32KB</td>
+<td>1KB</td>
+<td>1GB</td>
+<td>预加载索引时分配的缓冲区大小</td>
+<td>-</td>
+</tr>
+<tr>
+<td>read_buffer_size</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>128KB</td>
+<td>8200B</td>
+<td>2GB</td>
+<td>1. 对MyISAM表进行顺序扫描的每个线程都会为其扫描的每个表分配此大小（以字节为单位）的缓冲区。<br>2. 对于所有存储引擎：<br>(1) 在为ORDER BY排序行时，用于将索引缓存在临时文件（而不是临时表）中。<br>(2) 对于批量插入分区。<br>(3) 用于缓存嵌套查询的结果。</td>
+<td>该值为4kb的倍数（如果不是会四舍五入取最近的）</td>
+</tr>
+<tr>
+<td>read_rnd_buffer_size</td>
+<td>Global,<br>Session</td>
+<td>Yes</td>
+<td>256KB</td>
+<td>1B</td>
+<td>2GB</td>
+<td>该值用于从MyISAM表进行读取，并且对于任何存储引擎均用于多范围读取优化</td>
+<td>当在键排序操作之后按排序顺序从MyISAM表中读取行时，将通过此缓冲区读取这些行以避免磁盘查找（将变量设置为较大的值可以大大提高ORDER BY性能。但是这是为每个客户端分配的缓冲区，因此不应将全局变量设置为较大的值，而是仅在需要运行大型查询的那些客户端中更改会话变量）</td>
+</tr>
+<tr>
+<td>sort_buffer_size</td>
+<td>Global<br>Session</td>
+<td>Yes</td>
+<td>256KB</td>
+<td>32KB</td>
+<td>4GB(32 bit)<br>-(64 bit)</td>
+<td>每个必须执行排序的会话都会分配此大小的缓冲区</td>
+<td>(1) 该参数是会话级的（每个session用到排序时都会分配），所以不应设置过大；<br>(2) SHOW GLOBAL STATUS时如果看到每秒有很多Sort_merge_passes，则可以考虑增加sort_buffer_size值来加快ORDER BY或GROUP BY操作，这些操作无法通过查询优化或改进的索引来改善</td>
+</tr>
+</tbody></table>
+<p>补充：</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:130px">Variable_name</div></th>
+<th><div style="width:30px">范围</div></th>
+<th><div style="width:30px">是否动态参数</div></th>
+<th><div style="width:35px">默认值</div></th>
+<th><div style="width:35px">最小值</div></th>
+<th><div style="width:100px">最大值</div></th>
+<th><div style="width:90px">说明</div></th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><div style="width:130px">innodb_buffer_pool_chunk_size</div></td>
+<td>Global</td>
+<td>No</td>
+<td>128M</td>
+<td>1M</td>
+<td><div style="width:100px">innodb_buffer_pool_size / innodb_buffer_pool_instances（缓冲池大小/缓冲池实例个数）</div></td>
+<td><div style="width:90px">对缓冲池分块以避免在调整缓冲池大小时复制缓冲池的全部页，这个值就是用来定义每块的大小</div></td>
+<td>(1) 初始化时如果innodb_buffer_pool_chunk_size*缓冲池实例个数比当前的缓冲池大小还大，innodb_buffer_pool_chunk_size会被调整为：缓冲池大小/缓冲池实例个数；<br>(2) ==innodb_buffer_pool_size== 一定是等于innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances的，如果修改==innodb_buffer_pool_chunk_size==配置，初始化时也会自动调整innodb_buffer_pool_size大小为innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances。（所以调整innodb_buffer_pool_chunk_size配置时需要留心对缓冲池大小的影响）；<br>(3) 为避免潜在性能问题，不要让innodb_buffer_pool_instances的值超过1000</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>链接：<br><a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html">https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html</a><br><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html">https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html</a> </p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>MySQL</tag>
+        <tag>文档翻译</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Swap介绍与应用</title>
+    <url>/2020/02/11/Swap/</url>
+    <content><![CDATA[<blockquote class="blockquote-center"><p>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为<span class="label info">交换空间</span>）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</p>
+</blockquote>
+
+<span id="more"></span>
+
+<!-- TOC -->
+
+<ul>
+<li><a href="#1-交换空间swap-space">1. 交换空间（Swap space）</a></li>
+<li><a href="#2-交换分区swap-partition">2. 交换分区（Swap partition）</a></li>
+<li><a href="#3-交换文件swap-file">3. 交换文件（Swap file）</a></li>
+<li><a href="#4-性能">4. 性能</a><ul>
+<li><a href="#41-两个影响swap性能的参数">4.1. 两个影响swap性能的参数</a></li>
+<li><a href="#42-优先级">4.2. 优先级</a></li>
+<li><a href="#43-使用zswap或zram">4.3. 使用zswap或zram</a></li>
+<li><a href="#44-striping-">4.4. Striping (?)</a></li>
+</ul>
+</li>
+</ul>
+<!-- /TOC -->
+
+<h3 id="1-交换空间（Swap-space）"><a href="#1-交换空间（Swap-space）" class="headerlink" title="1. 交换空间（Swap space）"></a>1. 交换空间（Swap space）</h3><ul>
+<li>交换空间可以采用<span class="label warning">磁盘分区</span>或<span class="label warning">文件</span>的形式。交换空间可用于两个目的，即将虚拟内存扩展到已安装的物理内存（RAM）之外（也称为“enable swap”），也可用于磁盘挂起支持（suspend-to-disk support）。</li>
+<li>启用交换是否有益取决于已安装的物理内存量以及运行所有所需程序所需的内存量。如果物理内存量小于所需的量，则启用交换是有益的。这样可以避免内存不足的情况，Linux内核的<span class="label warning">OOM killer</span>机制将通过杀死进程来自动尝试释放内存。要将虚拟内存量增加到所需的数量，请添加必要的差异作为交换空间。启用交换的最大缺点是<span class="label warning">性能较低</span>。</li>
+<li>检查Swap状态：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapon -s</span><br></pre></td></tr></table></figure>
+
+<p>或者</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">free -m <span class="comment">#free还指示内存是否不足，可以通过启用或增加Swap来补救。</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-交换分区（Swap-partition）"><a href="#2-交换分区（Swap-partition）" class="headerlink" title="2. 交换分区（Swap partition）"></a>2. 交换分区（Swap partition）</h3><ul>
+<li>将分区设置为Linux交换区域（<span class="label danger">注：指定分区上的所有数据将丢失</span>）：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mkswap / dev / sd xy</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>启用device进行分页：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapon /dev/sdxy</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>要在启动时启用此交换分区，添加以下内容到/etc/fstab：</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">UUID=device_UUID none swap defaults 0 0 </span><br><span class="line"><span class="comment">#device_UUID是swap的UUID</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>通过systemd激活<br>systemd基于两种不同的机制激活交换分区。两者都是的可执行文件 <span class="label warning">/usr/lib/systemd/system-generators</span>。生成器在启动时运行，并创建用于安装的本机systemd单元。首先 <span class="label warning">systemd-fstab-generator</span>读取fstab，生成单元（包括用于交换的单元）。第二步，<span class="label warning">systemd-gpt-auto-generator</span>检查根磁盘以生成单元。它仅在GPT磁盘上运行，并且可以通过分区类型GUID识别交换分区。</li>
+<li>禁用交换</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapoff / dev / sd xy</span><br><span class="line">swapoff -a  <span class="comment">#禁用所有交换空间</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-交换文件（Swap-file）"><a href="#3-交换文件（Swap-file）" class="headerlink" title="3. 交换文件（Swap file）"></a>3. 交换文件（Swap file）</h3><p><u><em>作为创建整个分区的替代方案，交换文件提供了动态更改大小的功能，并且更容易完全删除。</em></u></p>
+<ul>
+<li>手动创建</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#对于Btrfs这种写时复制（copy-on-write）的文件系统</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#首先创建一个长度为零的文件</span></span><br><span class="line">truncate -s 0 /swapfile</span><br><span class="line"><span class="comment">#使用chattr对其设置 No_COW 属性</span></span><br><span class="line">chattr +C /swapfile</span><br><span class="line"><span class="comment">#禁用压缩</span></span><br><span class="line">btrfs property <span class="built_in">set</span> /swapfile compression none</span><br></pre></td></tr></table></figure>
+
+<p><i><span class="label danger">注：自Linux内核版本5.0起，Btrfs开始支持交换文件，但有一定限制:<br> (1) 交换文件不能位于快照子卷上。正确的过程是创建一个新的子卷来放置交换文件。<br> (2) 它不支持跨多个设备的文件系统上的交换文件。</span></i></p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#使用fallocate创建一个交换文件（M = Mebibytes，G = Gibibytes）</span></span><br><span class="line">fallocate -l 512M /swapfile</span><br><span class="line"><span class="comment">#注意： Fallocate可能会导致某些文件系统（例如F2FS）出现问题。作为替代，使用dd更可靠，但更慢</span></span><br><span class="line">dd <span class="keyword">if</span>=/dev/zero of=/swapfile bs=1M count=512 status=progress</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置正确的权限（world-readable swap file是一个巨大的本地漏洞）：</span></span><br><span class="line">chmod 600 /swapfile</span><br><span class="line"></span><br><span class="line"><span class="comment">#格式化</span></span><br><span class="line">mkswap /swapfile</span><br><span class="line"></span><br><span class="line"><span class="comment">#激活</span></span><br><span class="line">swapon /swapfile</span><br><span class="line"></span><br><span class="line"><span class="comment">#编辑fstab配置，添加以下条目</span></span><br><span class="line">vim /etc/fstab</span><br><span class="line">/swapfile none swap defaults 0 0</span><br></pre></td></tr></table></figure>
+
+<p><i><span class="label danger">注：交换文件必须由其在文件系统上的位置指定，而不是由其UUID或LABEL指定</span></i></p>
+<ul>
+<li>删除交换文件</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#先关闭</span></span><br><span class="line">swapoff /swapfile</span><br><span class="line"><span class="comment">#再删除</span></span><br><span class="line">rm -f /swapfile</span><br><span class="line"><span class="comment">#最后从/etc/fstab中删除相关条目</span></span><br><span class="line">vim /etc/fstab</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>自动创建<br><u><em>systemd-swap是一个脚本，用于从zram交换、交换文件和交换分区创建混合交换空间。它与systemd项目无关。</em></u></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#安装systemd-swap包</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/Nefelim4ag/systemd-swap.git</span><br><span class="line"><span class="built_in">cd</span> systemd-swap</span><br><span class="line">sudo make install</span><br><span class="line"><span class="comment">#设置/etc/systemd/swap.conf的交换文件分块配置</span></span><br><span class="line">swapfc_enabled=1</span><br><span class="line">? swapfc_force_preallocated=1 (如果日志一直报这个错误systemd-swap[..]: WARN: swapFC: ENOSPC，就开启)</span><br><span class="line"><span class="comment">#启动systemd-swap服务</span></span><br><span class="line">sudo service systemd-swap start</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-性能"><a href="#4-性能" class="headerlink" title="4. 性能"></a>4. 性能</h3><p><u><em>交换操作通常比直接访问RAM中的数据要慢得多。完全禁用交换以提高性能有时会导致性能下降，因为这会减少可用于VFS缓存的内存，从而导致更频繁、更昂贵的磁盘I/O。</em></u></p>
+<h4 id="4-1-两个影响swap性能的参数"><a href="#4-1-两个影响swap性能的参数" class="headerlink" title="4.1. 两个影响swap性能的参数"></a>4.1. 两个影响swap性能的参数</h4><ul>
+<li><strong>Swappiness</strong><br>swappiness sysctl参数表示内核对交换空间的偏好(或避免)。Swappiness的值可以在0到100之间，默认值是60。低值导致内核避免交换，高值导致内核尝试使用交换空间。在足够的内存上使用较低的值可以提高许多系统的响应能力。</li>
+<li><strong>VFS cache pressure</strong><br>它控制内核回收用于缓存VFS caches的内存的趋势，而不是pagecache和swap。增加这个值会增加回收VFS缓存的速度。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#检查当前swappiness|vfs_cache_pressure值（或者可以查看文件/sys/fs/cgroup/memory/memory.swappiness或/proc/sys/vm/swappiness）</span></span><br><span class="line">sysctl vm.swappiness</span><br><span class="line">sysctl vm.vfs_cache_pressure</span><br><span class="line"></span><br><span class="line"><span class="comment">#临时设置（由于/proc组织性很差，仅出于兼容性目的而保留，因此建议使用/sys代替）</span></span><br><span class="line">sysctl -w vm.swappiness=10</span><br><span class="line">sysctl -w vm.vfs_cache_pressure=50</span><br><span class="line"></span><br><span class="line"><span class="comment">#永久设置</span></span><br><span class="line">vim /etc/sysctl.d/99-swappiness.conf</span><br><span class="line">vm.swappiness=10</span><br><span class="line">vm.vfs_cache_pressure=50</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-2-优先级"><a href="#4-2-优先级" class="headerlink" title="4.2. 优先级"></a>4.2. 优先级</h4><p>如果有多个交换文件或交换分区，则应考虑为每个交换区域分配一个优先级值（0到32767）。在使用优先级较低的交换区之前，系统将使用优先级较高的交换区。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#例，有一个较快的磁盘（/dev/sda）和一个较慢的磁盘（/dev/sdb），为最快的设备上的交换区域分配更高的优先级（pri）</span></span><br><span class="line">/dev/sda1 none swap defaults,pri=100 0 0</span><br><span class="line">/dev/sdb2 none swap defaults,pri=10  0 0</span><br><span class="line"></span><br><span class="line"><span class="comment">#或通过swapon的--priority参数：</span></span><br><span class="line">swapon --priority 100 /dev/sda1</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-3-使用zswap或zram"><a href="#4-3-使用zswap或zram" class="headerlink" title="4.3. 使用zswap或zram"></a>4.3. 使用zswap或zram</h4><p>Zswap是Linux内核功能，为交换的页面提供压缩的回写缓存。这样可以提高性能并减少IO操作。ZRAM在内存中创建虚拟压缩的交换文件，以替代磁盘上的交换文件。</p>
+<h4 id="4-4-Striping"><a href="#4-4-Striping" class="headerlink" title="4.4. Striping (?)"></a>4.4. Striping (?)</h4><p>出于交换性能的原因，没有必要使用RAID。内核本身可以在多个设备上进行stripe swapping，只要在/etc/fstab文件中赋予它们相同的优先级即可。</p>
+<blockquote>
+<p>链接：<br><a href="https://wiki.archlinux.org/index.php/Swap">https://wiki.archlinux.org/index.php/Swap</a><br><a href="https://www.linux.com/news/all-about-linux-swap-space">https://www.linux.com/news/all-about-linux-swap-space</a></p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>Coding</category>
+      </categories>
+      <tags>
+        <tag>文档翻译</tag>
+        <tag>Linux</tag>
+        <tag>Swap</tag>
+      </tags>
+  </entry>
+</search>

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"itisbean.github.io","root":"/","scheme":"Mist","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="今天在帮朋友爬取好大夫网站的时候，一直被卡在请求医生个人主页上。打印错误信息发现返回的http code都是521，而直接打开网页又是正常的。对于这个状态码我并不了解，但是前功尽弃又实在不甘心，只好Google寻找答案。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Go爬虫 http code 521问题解决">
+<meta property="og:url" content="http://itisbean.github.io/2020/03/29/Goquery_521/index.html">
+<meta property="og:site_name" content="YourMutualFriend">
+<meta property="og:description" content="今天在帮朋友爬取好大夫网站的时候，一直被卡在请求医生个人主页上。打印错误信息发现返回的http code都是521，而直接打开网页又是正常的。对于这个状态码我并不了解，但是前功尽弃又实在不甘心，只好Google寻找答案。">
+<meta property="og:locale" content="zh_HK">
+<meta property="article:published_time" content="2020-03-29T22:48:56.000Z">
+<meta property="article:modified_time" content="2025-01-21T22:18:56.486Z">
+<meta property="article:author" content="dony">
+<meta property="article:tag" content="Go">
+<meta property="article:tag" content="网络爬虫">
+<meta property="article:tag" content="实战总结">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://itisbean.github.io/2020/03/29/Goquery_521/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Go爬虫 http code 521问题解决 | YourMutualFriend</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-155299131-2"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-155299131-2');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="YourMutualFriend" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">YourMutualFriend</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">第二基地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切換導航欄">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首頁</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>標籤</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分類</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>歸檔</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>檢索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-HK">
+    <link itemprop="mainEntityOfPage" href="http://itisbean.github.io/2020/03/29/Goquery_521/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="dony">
+      <meta itemprop="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="YourMutualFriend">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Go爬虫 http code 521问题解决
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">發表於</span>
+
+              <time title="創建時間：2020-03-29 23:48:56" itemprop="dateCreated datePublished" datetime="2020-03-29T23:48:56+01:00">2020-03-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分類於</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Coding/" itemprop="url" rel="index">
+                    <span itemprop="name">Coding</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>今天在帮朋友爬取好大夫网站的时候，一直被卡在请求医生个人主页上。打印错误信息发现返回的http code都是521，而直接打开网页又是正常的。对于这个状态码我并不了解，但是前功尽弃又实在不甘心，只好Google寻找答案。</p>
+<span id="more"></span>
+
+<p>最终是这篇文章帮到了我：<a target="_blank" rel="noopener" href="https://blog.csdn.net/wangdepei/article/details/84798601"><span class="label info">HTTP STATUS CODE: 521的解决办法</span></a></p>
+<p>我在Postman和Chrome浏览器上还原这个场景，果然和文章描述非常一致。</p>
+<p><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes"><span class="label info">List of HTTP status codes</span></a> 中对http code 521的定义是：</p>
+<blockquote>
+<p>Web Server Is Down: The origin server has refused the connection from Cloudflare.</p>
+</blockquote>
+<p>实际上，这是网站防爬虫的一种措施。了解了这一措施的执行方式，也就可以抽丝剥茧一步一步去解决这个问题了。</p>
+<p>具体的分析过程就不赘述了，直接参考上面那篇文章即可，这里我简单记录一下在代码中解决的完整过程：</p>
+<ol>
+<li><p>发起一个请求。这是正常操作，但是这一次请求肯定不能得到有效的页面，不过都是必走的过程，无法避免。<br> (1) 先清除cookie（在postman下使用带cookie的请求得到的js代码无法解析，而浏览器是可以正常跳转的，这里不深究了，直接清掉以绝后患）;</p>
+ <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">req.Header.Del(<span class="string">&quot;Cookie&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p> (2) 设置该请求的Connection为keep-alive（<span class="label danger">第二个请求要使用同一个req发起，所以这个请求是不能close掉的</span>）</p>
+ <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">req.Header.Add(<span class="string">&quot;Connection&quot;</span>, <span class="string">&quot;keep-alive&quot;</span>)</span><br><span class="line">req.Close = <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<p> (3) 发起请求并拿到响应结果（略）</p>
+</li>
+<li><p>获取响应头的Set-Cookie属性，打印出来该值如下，这里只需要拿到__jsluid_h的值即可：</p>
+ <figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">__jsluid_h=a44718981efe4f7006fece7f82d69844; max-age=<span class="number">31536000</span>; path=/; HttpOnly</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>获取response body，看起来像是一段js代码和一堆乱码组成，我们只需要<code>&lt;script&gt;</code>和<code>&lt;/script&gt;</code>之间的js代码 ，打印输出如下：<br> <i style="font-size:12px;"> <div class="note default">
+            <p>var x=”captcha@charAt@@@toLowerCase@@@onreadystatechange@Mar@Expires@firstChild@@@@chars@innerHTML@40@parseInt@if@while@@@createElement@@H@String@0xEDB88320@join@fromCharCode@@30@a@@@div@20@match@Mon@addEventListener@@DOMContentLoaded@split@17@19@pathname@@@challenge@rOm9XFMtA3QKV7nYsPGT4lifyWwkq5vcjH2IdxUoCbhERLaz81DNB6@Path@else@GMT@href@toString@e@function@@0xFF@false@@0@RegExp@@catch@@JgSe0upZ@Array@@@27@@@@<em>_jsl_clearance@3@@substr@3D@document@@@return@k7zgL@location@g@cookie@@replace@window@2@1500@h@67Yn@@eval@new@search@@8@try@1585586419@@6@@charCodeAt@@reverse@f@d@var@@attachEvent@setTimeout@@@n@https@for@@@@length@@36@1@@@2Fs”.replace(/@<em>$/,””).split(“@”),y=”2u o=1g(){2x(‘24.1d=24.15+24.2h.28(/[\?|&amp;]1-18/,\‘\‘)’,2b);1D.26=’1y=2l.1u|1l|’+(1g(){2u y=[1g(o){22 o},1g(y){22 y},(1g(){2u o=1D.n(‘z’);o.g=’&lt;w 1d=\‘/\‘&gt;7</w>‘;o=o.b.1d;2u y=o.B(/2B?:\/\//)[1l];o=o.1B(y.32).5();22 1g(y){2C(2u 7=1l;7&lt;y.32;7++){y[7]=o.2(y[7])};22 y.s(‘’)}})(),1g(o){22 2f(‘q.t(‘+o+’)’)}],7=[[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],[-<del>-</del>[]],[[2n]+[2n],[(-<del>[]+[-</del>-<del>[]]&gt;&gt;-</del>-<del>[])-</del>(+!![][{}])-<del>[-</del>![]-<del>![]]]+[(+[])]],’2c’,[[2n]+(-</del>(2j)+[])],’2A’,[(2j+[]+[])+(2j+[]+[])],[2n]+((-<del>(+!![][{}])+[</del>{}])/[(-<del>![]&lt;&lt;-</del>![])]+[[]][1l]),’p%38’,[-<del>-</del>[]],[[-<del>![]]+[-</del>![]]+(-<del>[-</del>![]-<del>![]]+[]+[])],’2d’,[[-</del>![]]],’23’,[(-<del>[-</del>![]-<del>![]]+[]+[]),((-</del>(+!![][{}])+[<del>{}])/[(-</del>![]&lt;&lt;-<del>![])]+[[]][1l])],(!-{}+[]).2(</del>[]),’25’,[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],’1C’];2C(2u o=1l;o&lt;7.32;o++){7[o]=y<a href="7[o]">[1z,1l,1z,35,1z,35,1z,1l,35,1l,1z,35,2a,35,2a,1l,35,1z,35][o]</a>};22 7.s(‘’)})()+’;a=C, v-9-A 13:h:14 1c;1a=/;’};j((1g(){2k{22 !!29.D;}1o(1f){22 1j;}})()){1D.D(‘11’,o,1j)}1b{1D.2w(‘8’,o)}”,f=function(x,y){var a=0,b=0,c=0;x=x.split(“”);y=y||99;while((a=x.shift())&amp;&amp;(b=a.charCodeAt(0)-77.5))c=(Math.abs(b)&lt;13?(b+48.5):parseInt(a,36))+y</em>c;return c},z=f(y.match(/\w/g).sort(function(x,y){return f(x)-f(y)}).pop());while(z++)try{ console.log(y.replace(/\b\w+\b/g, function(y){return x[f(y,z)-1]||(“</em>“+y)}));break}catch(_){}</p>
+          </div></i></p>
+</li>
+<li><p>接下来要执行上面这段js，这里需要用到运行js代码的go包：<a target="_blank" rel="noopener" href="https://github.com/robertkrimen/otto"><span class="label info">github.com/robertkrimen/otto</span></a>，使用方法也很简单，直接参考文档就好。但是上面这段代码还是存在一些问题，直接运行是拿不到任何返回结果的。我的解决方式如下，先使用<span class="label primary">console.log()</span>输出控制台日志，再在js代码里加一段代码，返回最后一条log结果。代码如下：</p>
+ <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//先把上段js代码中的eval替换成console.log</span></span><br><span class="line">js = strings.Replace(js, <span class="string">&quot;eval(&quot;</span>, <span class="string">&quot; console.log(&quot;</span>, <span class="number">-1</span>)</span><br><span class="line"><span class="comment">// 加入一段返回log的js代码</span></span><br><span class="line">consoleJs := <span class="string">&quot;var lastLog = \&quot;\&quot;;console.oldLog = console.log;console.log = function(str) &#123;console.oldLog(str);lastLog = str;&#125;;&quot;</span></span><br><span class="line"><span class="comment">// 拼接起来，并执行最终这段js</span></span><br><span class="line">js = consoleJs + js</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>执行后得到的第二段js代码如下，结果依然非常乱，其他的不用管，直接找到我们需要的第二个cookie的key，也就是<span class="label danger">__jsl_clearance</span>，=后面的内容就是我们需要的值：1585492297.69|0| + function(){}，前半段很好说，主要是后半段的function的内容看起来十分隐晦，不过既然是js代码，我们还是可以通过运行它来获取答案的。</p>
+<p> <i style="font-size:12px"> <div class="note default">
+            <p>var _o=function(){setTimeout(‘location.href=location.pathname+location.search.replace(/[?|&amp;]captcha-challenge/,&#39;&#39;)’,1500);<span class="label danger">document.cookie=__jsl_clearance=1585586419.27|0|</span>+(function(){var _y=[function(_o){return _o},function(_y){return _y},(function(){var _o=document.createElement(‘div’);_o.innerHTML=’&lt;a href=&#39;/&#39;&gt;_7</a>‘;_o=_o.firstChild.href;var _y=_o.match(/https?:///)[0];_o=_o.substr(_y.length).toLowerCase();return function(_y){for(var _7=0;_7&lt;_y.length;_7++){_y[_7]=_o.charAt(_y[_7])};return _y.join(‘’)}})(),function(_o){return eval(‘String.fromCharCode(‘+_o+’)’)}],_7=[[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],[-<del>-</del>[]],[[6]+[6],[(-<del>[]+[-</del>-<del>[]]&gt;&gt;-</del>-<del>[])-</del>(+!![][{}])-<del>[-</del>![]-<del>![]]]+[(+[])]],’h’,[[6]+(-</del>(8)+[])],’n’,[(8+[]+[])+(8+[]+[])],[6]+((-<del>(+!![][{}])+[</del>{}])/[(-<del>![]&lt;&lt;-</del>![])]+[[]][0]),’H%2Fs’,[-<del>-</del>[]],[[-<del>![]]+[-</del>![]]+(-<del>[-</del>![]-<del>![]]+[]+[])],’67Yn’,[[-</del>![]]],’k7zgL’,[(-<del>[-</del>![]-<del>![]]+[]+[]),((-</del>(+!![][{}])+[<del>{}])/[(-</del>![]&lt;&lt;-<del>![])]+[[]][0])],(!-{}+[]).charAt(</del>[]),’g’,[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],’3D’];for(var _o=0;_o&lt;_7.length;_o++){_7[_o]=_y<a href="_7[_o]">[3,0,3,1,3,1,3,0,1,0,3,1,2,1,2,0,1,3,1][_o]</a>};return _7.join(‘’)})()+’;Expires=Mon, 30-Mar-20 17:40:19 GMT;Path=/;’};if((function(){try{return !!window.addEventListener;}catch(e){return false;}})()){document.addEventListener(‘DOMContentLoaded’,_o,false)}else{document.attachEvent(‘onreadystatechange’,_o)}</p>
+          </div> </i></p>
+<p> 以下就是截取出来的cookie值后半段的js代码了（因为在原代码段中这是个闭包函数，截取出来是无法直接执行的，所以把function中的内容单独拿出来，定义为一个新函数f。</p>
+<p> <i style="font-size:12px"> <div class="note default">
+            <p>function f(){var _y=[function(_o){return _o},function(_y){return _y},(function(){var _o=document.createElement(‘div’);_o.innerHTML=’&lt;a href=&#39;/&#39;&gt;_7</a>‘;_o=_o.firstChild.href;var _y=_o.match(/https?:///)[0];_o=_o.substr(_y.length).toLowerCase();return function(_y){for(var _7=0;_7&lt;_y.length;_7++){_y[_7]=_o.charAt(_y[_7])};return _y.join(‘’)}})(),function(_o){return eval(‘String.fromCharCode(‘+_o+’)’)}],_7=[[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],[-<del>-</del>[]],[[6]+[6],[(-<del>[]+[-</del>-<del>[]]&gt;&gt;-</del>-<del>[])-</del>(+!![][{}])-<del>[-</del>![]-<del>![]]]+[(+[])]],’h’,[[6]+(-</del>(8)+[])],’n’,[(8+[]+[])+(8+[]+[])],[6]+((-<del>(+!![][{}])+[</del>{}])/[(-<del>![]&lt;&lt;-</del>![])]+[[]][0]),’H%2Fs’,[-<del>-</del>[]],[[-<del>![]]+[-</del>![]]+(-<del>[-</del>![]-<del>![]]+[]+[])],’67Yn’,[[-</del>![]]],’k7zgL’,[(-<del>[-</del>![]-<del>![]]+[]+[]),((-</del>(+!![][{}])+[<del>{}])/[(-</del>![]&lt;&lt;-<del>![])]+[[]][0])],(!-{}+[]).charAt(</del>[]),’g’,[(-<del>[-</del>![]-<del>![]]+[]+[])+[(-</del>[]+[-<del>-</del>[]]&gt;&gt;-<del>-</del>[])-<del>(+!![][{}])-</del>[-<del>![]-</del>![]]]],’3D’];for(var _o=0;_o&lt;_7.length;_o++){_7[_o]=_y<a href="_7[_o]">[3,0,3,1,3,1,3,0,1,0,3,1,2,1,2,0,1,3,1][_o]</a>};return _7.join(‘’)} </p>
+          </div> </i></p>
+<p> 尝试执行这段js，问题又出现了。开始报<span class="label warning">'document' is not defined</span> 等错误。报错主要集中在这一部分中：<span class="label danger"> var _o=document.createElement(div);_o.innerHTML=<a href='/'>_7</a>;_o=_o.firstChild.href;var _y=_o.match(/https?:\/\//)[0];_o=_o.substr(_y.length).toLowerCase();</span>，无论你熟不熟悉js都应该看得出这段看似冗长的代码实际上不过是在给一个变量赋值。<br> 但是这些错误很难破解，因为<span class="label primary">不是在浏览器环境下，无法使用DOM对象</span>。不过都想到这里了，那不妨试试在浏览器下执行它会是什么结果。打开Chrome控制台执行这部分代码，并输出最终的这个变量值。<br> 看到结果后我不禁长舒一口气，竟然是当前页面的域名。既然如此那就不用绞尽脑汁去想如何解决js报错了，直接<span class="label primary">将这个变量赋值为当前域名</span>就好了。<br> 之后使用otto执行这个函数（或在js里执行，直接run()获取结果都可）。这样就拿到第二个cookie的后半段的值了。和前半部分拼接起来就是我们要的答案：</p>
+ <figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">__jsl_clearance=<span class="number">1585492297.69</span>|<span class="number">0</span>|CvTK%2BIDWOOHs4DdtqxrDiz7%2BU%3D</span><br></pre></td></tr></table></figure>
+
+<p> 补充：如果还遇到类似<span class="label warning">'window' is not defined</span>的报错，直接在前面创建一个默认对象就好，如下</p>
+ <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">preJs := <span class="string">&quot;var window = &#123;&#125;;&quot;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>最后，把完整的cookie加到请求头中再发起一起请求，就可以获得200的正常返回了。</p>
+ <div class="note success">
+            <p>Cookie: <strong>jsluid_h=a44718981efe4f7006fece7f82d69844;</strong>jsl_clearance=1585586419.27|0|%2BFhEnX65H%2Fs2q67Ynuk7zgLietg%3D</p>
+          </div>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Go/" rel="tag"># Go</a>
+              <a href="/tags/%E7%BD%91%E7%BB%9C%E7%88%AC%E8%99%AB/" rel="tag"># 网络爬虫</a>
+              <a href="/tags/%E5%AE%9E%E6%88%98%E6%80%BB%E7%BB%93/" rel="tag"># 实战总结</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/01/Mysql_buffer_size/" rel="prev" title="MySQL：buffer_size相关配置">
+      <i class="fa fa-chevron-left"></i> MySQL：buffer_size相关配置
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/04/01/Mysql_shutdown/" rel="next" title="mysql频繁重启 问题解决">
+      mysql频繁重启 问题解决 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目錄
+        </li>
+        <li class="sidebar-nav-overview">
+          本站概覽
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="dony"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">dony</p>
+  <div class="site-description" itemprop="description">無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-name">文章</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分類</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">標籤</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/itisbean" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;itisbean" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:iamdonydou@gmail.com" title="E-Mail → mailto:iamdonydou@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/donyd13" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;donyd13" rel="noopener" target="_blank"><i class="fa fa-fw fa-twitter"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/douning2021" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;douning2021" rel="noopener" target="_blank"><i class="fa fa-fw fa-instagram"></i>Instagram</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">dony</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

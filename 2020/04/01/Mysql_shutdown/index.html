@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"itisbean.github.io","root":"/","scheme":"Mist","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="最近每天晚上的定时任务都会跑失败，业务错误日志都是MySQL server has gone away。去查MySQL的日志也没有对应的错误信息，只有启动日志： 1232020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mysql频繁重启 问题解决">
+<meta property="og:url" content="http://itisbean.github.io/2020/04/01/Mysql_shutdown/index.html">
+<meta property="og:site_name" content="YourMutualFriend">
+<meta property="og:description" content="最近每天晚上的定时任务都会跑失败，业务错误日志都是MySQL server has gone away。去查MySQL的日志也没有对应的错误信息，只有启动日志： 1232020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting">
+<meta property="og:locale" content="zh_HK">
+<meta property="article:published_time" content="2020-04-01T01:46:01.000Z">
+<meta property="article:modified_time" content="2025-01-21T22:18:56.487Z">
+<meta property="article:author" content="dony">
+<meta property="article:tag" content="实战总结">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="网站开发">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://itisbean.github.io/2020/04/01/Mysql_shutdown/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>mysql频繁重启 问题解决 | YourMutualFriend</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-155299131-2"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-155299131-2');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="YourMutualFriend" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">YourMutualFriend</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">第二基地</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切換導航欄">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首頁</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>標籤</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分類</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>歸檔</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>檢索
+        </a>
+      </li>
+  </ul>
+
+</nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-HK">
+    <link itemprop="mainEntityOfPage" href="http://itisbean.github.io/2020/04/01/Mysql_shutdown/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+      <meta itemprop="name" content="dony">
+      <meta itemprop="description" content="無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="YourMutualFriend">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          mysql频繁重启 问题解决
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">發表於</span>
+
+              <time title="創建時間：2020-04-01 02:46:01" itemprop="dateCreated datePublished" datetime="2020-04-01T02:46:01+01:00">2020-04-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分類於</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Coding/" itemprop="url" rel="index">
+                    <span itemprop="name">Coding</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>最近每天晚上的定时任务都会跑失败，业务错误日志都是<span class="label danger">MySQL server has gone away</span>。去查MySQL的日志也没有对应的错误信息，只有启动日志：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">2020-01-19T07:04:07.434344Z 0 [System] [MY-010116] [Server] &#x2F;usr&#x2F;sbin&#x2F;mysqld (mysqld 8.0.18) starting as process 10717</span><br><span class="line">2020-01-19T07:04:09.716710Z 0 [System] [MY-010229] [Server] Starting crash recovery...</span><br><span class="line">2020-01-19T07:04:09.786959Z 0 [System] [MY-010232] [Server] Crash recovery finished.</span><br></pre></td></tr></table></figure>
+
+<span id="more"></span>
+
+<p>查看内核日志（dmesg |grep mysqld），发现是内存不够用直接被kill掉了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[5974675.178431] [32531]  1000 32531   343724   120571     343        0             0 mysqld</span><br><span class="line">[5974675.178504] Out of memory: Kill process 32531 (mysqld) score 476 or sacrifice child</span><br><span class="line">[5974675.180641] Killed process 32531 (mysqld) total-vm:1374896kB, anon-rss:482284kB, file-rss:0kB, shmem-rss:0kB</span><br></pre></td></tr></table></figure>
+
+<p>我的服务器配置如下，可见资源非常紧张，然而运行一个几乎无人访问的<a target="_blank" rel="noopener" href="https://prettycrazyjoey.cn/"><span class="label info">小网站</span></a>应该也够了。</p>
+<table>
+<thead>
+<tr>
+<th>操作系统</th>
+<th>CPU</th>
+<th>内存</th>
+<th>公网带宽</th>
+<th>硬盘</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CentOS 7.5 64位</td>
+<td>1核</td>
+<td>1GB</td>
+<td>1Mbps</td>
+<td>50GB</td>
+</tr>
+</tbody></table>
+<p>但问题还是要解决的，不然每天<i>free -m</i>提心吊胆的实在是太折磨。我最初想到的方法是调整MySQL配置和定期清理缓存，经过一番查询和亲自实践才发现最有效的办法其实是使用交换文件作为虚拟内存。总之，这里还是记录和总结一下具体的解决方法吧。</p>
+<h4 id="1-调整MySQL配置"><a href="#1-调整MySQL配置" class="headerlink" title="1. 调整MySQL配置"></a>1. 调整MySQL配置</h4><p>MySQL刚安装的时候就已经把innodb_buffer_pool_size调整到了80M，只好继续调低，目前配置64M（<strong>注意</strong>：要同时修改<span class="label primary">innodb_buffer_pool_chunk_size</span>的大小，该值和innodb_buffer_pool_size一样都是默认128M。它相当于缓冲池的最小单位，如果缓冲池总大小比该值还小，在初始化时实际上不会改变）。但感觉这应该节省不了多少内存，只好继续从别的配置项着手。有关buffer_size相关的各配置项的详细说明请参见 <a href="/2020/03/01/Mysql_buffer_size/"><span class="label info">《MySQL：buffer_size相关配置》</span></a>。</p>
+<p>实际上，以我当前的服务器条件，在修改配置上节省出更多的内存，优化的空间已经非常小，且大部分MySQL的默认配置已经是相对最优的了。所以还是应该换个思路。</p>
+<h4 id="2-使用Swap虚拟内存"><a href="#2-使用Swap虚拟内存" class="headerlink" title="2. 使用Swap虚拟内存"></a>2. 使用Swap虚拟内存</h4><p><u><em>Linux将其物理RAM（随机访问内存）划分为称为页的内存块。Swap是将内存页复制到硬盘上预先配置的空间（称为交换空间）以释放该内存页的过程。物理内存和交换空间的总大小就是可用的虚拟内存量。</em></u></p>
+<p>更详细一些的介绍可以参考这篇，<a href="/2020/02/11/Swap/"><span class="label info">Swap介绍与应用</span></a>。</p>
+<p>最快捷的方法就是安装systemd-swap来使用交换空间，这是一个用来管理swap的脚本，只要简单几步就可以将复杂的创建和配置过程搞定，如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 安装systemd-swap包</span></span><br><span class="line">git clone https://github.com/Nefelim4ag/systemd-swap.git</span><br><span class="line">cd systemd-swap</span><br><span class="line">sudo make install</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置/etc/systemd/swap.conf的交换文件分块配置</span></span><br><span class="line">swapfc_enabled=1</span><br><span class="line">swapfc_force_preallocated=1 (如果日志一直报这个错误systemd-swap[..]: WARN: swapFC: ENOSPC，就开启)</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 启动systemd-swap服务</span></span><br><span class="line">sudo service systemd-swap start</span><br></pre></td></tr></table></figure>
+
+<h4 id="【后记】"><a href="#【后记】" class="headerlink" title="【后记】"></a>【后记】</h4><p>在使用Swap之前基本上MySQL每天都会重启一两次，使用之后就没再发生过重启的情况了，到目前也已经将近两个月过去了，而数据也是在不断增加的，实践证明，在内存空间不是十分富裕的情况下使用Swap交换空间作为虚拟内存，是非常有效的措施。</p>
+<p>当前的内存使用情况如下：</p>
+<table>
+<thead>
+<tr>
+<th>-</th>
+<th>total</th>
+<th>used</th>
+<th>free</th>
+<th>shared</th>
+<th>buff/cache</th>
+<th>available</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mem:</td>
+<td>991</td>
+<td>533</td>
+<td>66</td>
+<td>0</td>
+<td>392</td>
+<td>278</td>
+</tr>
+<tr>
+<td>Swap:</td>
+<td>1023</td>
+<td>566</td>
+<td>457</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%AE%9E%E6%88%98%E6%80%BB%E7%BB%93/" rel="tag"># 实战总结</a>
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+              <a href="/tags/%E7%BD%91%E7%AB%99%E5%BC%80%E5%8F%91/" rel="tag"># 网站开发</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/29/Goquery_521/" rel="prev" title="Go爬虫 http code 521问题解决">
+      <i class="fa fa-chevron-left"></i> Go爬虫 http code 521问题解决
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/08/04/Mysql_working-problem/" rel="next" title="Mysql实战：工作中遇到的真实案例分析">
+      Mysql实战：工作中遇到的真实案例分析 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目錄
+        </li>
+        <li class="sidebar-nav-overview">
+          本站概覽
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E8%B0%83%E6%95%B4MySQL%E9%85%8D%E7%BD%AE"><span class="nav-number">1.</span> <span class="nav-text">1. 调整MySQL配置</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E4%BD%BF%E7%94%A8Swap%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98"><span class="nav-number">2.</span> <span class="nav-text">2. 使用Swap虚拟内存</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E3%80%90%E5%90%8E%E8%AE%B0%E3%80%91"><span class="nav-number">3.</span> <span class="nav-text">【后记】</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="dony"
+      src="/images/avatar.jpeg">
+  <p class="site-author-name" itemprop="name">dony</p>
+  <div class="site-description" itemprop="description">無聊工作中留下一些腳印，關於 PHP,Golang,MySQL,Linux...</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-name">文章</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分類</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">標籤</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/itisbean" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;itisbean" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:iamdonydou@gmail.com" title="E-Mail → mailto:iamdonydou@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/donyd13" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;donyd13" rel="noopener" target="_blank"><i class="fa fa-fw fa-twitter"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/douning2021" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;douning2021" rel="noopener" target="_blank"><i class="fa fa-fw fa-instagram"></i>Instagram</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">dony</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
